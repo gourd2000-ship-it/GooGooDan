@@ -82,7 +82,8 @@ export default function PracticeScreen() {
     formData.append('totalTime', String(time));
 
     try {
-      const res = await fetch('http://localhost:5000/api/evaluate', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/evaluate`, {
         method: 'POST',
         body: formData,
       });

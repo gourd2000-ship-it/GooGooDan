@@ -24,10 +24,11 @@ export default function RankingScreen() {
   useEffect(() => {
     const fetchRanking = async () => {
       setLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       try {
         const url = selectedTab === 'all' 
-          ? 'http://localhost:5000/api/ranking' 
-          : `http://localhost:5000/api/ranking?table=${selectedTab}`;
+          ? `${apiUrl}/api/ranking` 
+          : `${apiUrl}/api/ranking?table=${selectedTab}`;
         const res = await fetch(url);
         const data = await res.json();
         if (data && data.length > 0) {
