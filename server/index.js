@@ -1,4 +1,9 @@
+const path = require('path');
+// .env 파일을 여러 경로(현재 폴더 및 상위 폴더의 .env / .ENV)에서 탐색하여 로드합니다.
 require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../.ENV') });
+
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -15,14 +20,32 @@ app.use(express.json());
 // 멀터(Multer) 설정 - 음성 파일을 메모리에 임시 저장 (Gemini로 바로 보내기 위함)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 환경변수에서 키 가져오기
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// 환경변수에서 키 가져오기 (언더바와 하이픈 형식을 모두 지원)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env['GEMINI-API-KEY'];
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
+if (!GEMINI_API_KEY) {
+  console.error('❌ 에러: GEMINI_API_KEY가 설정되지 않았습니다. .env 파일을 확인해 주세요.');
+} else {
+  console.log('✅ Gemini API Key 로드 성공');
+}
+
 // API 연동 초기화
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); // 사후 확장을 위한 DB 연결 준비
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+
+// Supabase는 설정이 있는 경우에만 초기화하여 서버 크래시를 방지합니다.
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  try {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase 클라이언트 초기화 완료');
+  } catch (err) {
+    console.error('❌ Supabase 초기화 중 오류 발생:', err.message);
+  }
+} else {
+  console.warn('⚠️ 경고: Supabase 설정(URL/KEY)이 누락되었습니다. DB 저장 및 랭킹 기능이 제한됩니다.');
+}
 
 // 테스트용 루트 API
 app.get('/', (req, res) => {
@@ -32,6 +55,14 @@ app.get('/', (req, res) => {
 // 랭킹 조회 API (8단계)
 app.get('/api/ranking', async (req, res) => {
   try {
+    if (!supabase) {
+      console.warn('⚠️ Supabase 미설정으로 더미 랭킹 데이터를 반환합니다.');
+      return res.json([
+        { student_name: '구구단박사', table_number: 9, score: 100, total_time_ms: 8500 },
+        { student_name: '바나나친구', table_number: 2, score: 100, total_time_ms: 12000 },
+        { student_name: '척척박사', table_number: 5, score: 88, total_time_ms: 15000 },
+      ]);
+    }
     const { table } = req.query;
     let query = supabase
       .from('records')
@@ -63,6 +94,11 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     const { table, mode, expectedAnswers, userName, totalTime } = req.body;
     console.log(`[채점 요청] 사용자: ${userName}, ${table}단, 파일크기: ${req.file.size} bytes, 형식: ${req.file.mimetype}`);
     
+    if (!genAI) {
+      console.error('❌ Gemini API 클라이언트가 초기화되지 않았습니다.');
+      return res.status(500).json({ error: '서버의 GEMINI_API_KEY 환경변수가 누락되었습니다.' });
+    }
+
     // Gemini 모델 설정 (현재 지원되는 최신 flash 모델 사용)
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
@@ -118,7 +154,7 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     }
 
     // Supabase 기록 저장
-    if (userName && evaluation.totalCorrect !== undefined) {
+    if (supabase && userName && evaluation.totalCorrect !== undefined) {
       const score = Math.round(((evaluation.totalCorrect || 0) / 9) * 100);
       const totalTimeMs = parseInt(totalTime) || 0;
       
