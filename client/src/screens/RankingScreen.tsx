@@ -36,8 +36,7 @@ export default function RankingScreen() {
           ? dummyRanking 
           : dummyRanking.filter(r => r.table_number === selectedTab);
 
-        if (data) {
-          // 데이터가 존재하면 설정 (성공 응답으로 빈 배열이 오면 그대로 빈 상태를 보여줌)
+        if (data && data.length > 0) {
           setRanking(data);
         } else {
           setRanking(filteredDummy);
