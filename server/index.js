@@ -126,7 +126,7 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
           "spoken": "학생이 실제로 말한 내용 (최대한 들리는 대로)", 
           "isCorrect": true 또는 false
         },
-        ... (총 9문제)
+        ... (총 10문제)
       ],
       "totalCorrect": 맞힌 개수,
       "feedback": "학생에게 해줄 친절한 격려의 말"
@@ -159,7 +159,15 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
 
     // Supabase 기록 저장
     if (supabase && userName && evaluation.totalCorrect !== undefined) {
-      const score = Math.round(((evaluation.totalCorrect || 0) / 9) * 100);
+      const correct = evaluation.totalCorrect || 0;
+      let score = 0;
+      if (mode === 'reverse') {
+        score = correct * 12;
+      } else if (mode === 'random') {
+        score = correct * 15;
+      } else {
+        score = correct * 10;
+      }
       const totalTimeMs = parseInt(totalTime) || 0;
       
       const { error: dbError } = await supabase

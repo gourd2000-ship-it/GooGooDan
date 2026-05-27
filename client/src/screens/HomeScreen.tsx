@@ -8,15 +8,15 @@ export default function HomeScreen() {
   const handleStart = () => {
     // Generate questions
     const questions = [];
-    let multipliers = [1,2,3,4,5,6,7,8,9];
+    let multipliers = [1,2,3,4,5,6,7,8,9,10];
     
     if (mode === 'reverse') {
-      multipliers = [9,8,7,6,5,4,3,2,1];
+      multipliers = [10,9,8,7,6,5,4,3,2,1];
     } else if (mode === 'random') {
       multipliers = [...multipliers].sort(() => Math.random() - 0.5);
     }
     
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 10; i++) {
       questions.push(`${selectedTable} x ${multipliers[i]}`);
     }
 

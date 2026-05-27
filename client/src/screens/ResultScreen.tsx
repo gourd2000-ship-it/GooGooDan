@@ -3,10 +3,18 @@ import { useStore } from '../store/useStore';
 import { RotateCcw } from 'lucide-react';
 
 export default function ResultScreen() {
-  const { resetApp, evaluationResult, totalTime } = useStore();
+  const { resetApp, evaluationResult, totalTime, mode } = useStore();
 
   const results = evaluationResult?.results || [];
-  const score = Math.round(((evaluationResult?.totalCorrect || 0) / 9) * 100);
+  
+  const getScore = () => {
+    const correct = evaluationResult?.totalCorrect || 0;
+    if (mode === 'reverse') return correct * 12;
+    if (mode === 'random') return correct * 15;
+    return correct * 10;
+  };
+  
+  const score = getScore();
   const feedback = evaluationResult?.feedback || "참 잘했어요!";
 
   return (
