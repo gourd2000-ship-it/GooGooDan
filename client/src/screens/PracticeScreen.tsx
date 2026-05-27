@@ -81,19 +81,26 @@ export default function PracticeScreen() {
     formData.append('userName', userName);
     formData.append('totalTime', String(time));
 
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    console.log('🔊 채점 요청을 보낼 API 주소:', `${apiUrl}/api/evaluate`);
+
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${apiUrl}/api/evaluate`, {
         method: 'POST',
         body: formData,
       });
+      
+      if (!res.ok) {
+        throw new Error(`서버 응답 실패 (HTTP ${res.status})`);
+      }
+      
       const data = await res.json();
       setEvaluationResult(data);
       setTotalTime(time);
       setScreen('result');
-    } catch (error) {
-      console.error(error);
-      alert('채점 중 오류가 발생했습니다.');
+    } catch (error: any) {
+      console.error('❌ 채점 중 에러 발생:', error);
+      alert(`채점 중 오류가 발생했습니다.\n상세 에러: ${error.message || error}`);
       setScreen('home');
     }
   };
