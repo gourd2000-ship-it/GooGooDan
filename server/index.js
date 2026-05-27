@@ -8,7 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { createClient } = require('@supabase/supabase-js');
+const { Pool } = require('pg');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -22,8 +22,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // 환경변수에서 키 가져오기 (언더바와 하이픈 형식을 모두 지원)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env['GEMINI-API-KEY'];
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!GEMINI_API_KEY) {
   console.error('❌ 에러: GEMINI_API_KEY가 설정되지 않았습니다. .env 파일을 확인해 주세요.');
@@ -34,17 +33,22 @@ if (!GEMINI_API_KEY) {
 // API 연동 초기화
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
-// Supabase는 설정이 있는 경우에만 초기화하여 서버 크래시를 방지합니다.
-let supabase = null;
-if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+// Neon DB Pool 초기화
+let pool = null;
+if (DATABASE_URL) {
   try {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase 클라이언트 초기화 완료');
+    pool = new Pool({
+      connectionString: DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    });
+    console.log('✅ Neon DB 풀(Pool) 초기화 완료');
   } catch (err) {
-    console.error('❌ Supabase 초기화 중 오류 발생:', err.message);
+    console.error('❌ Neon DB 초기화 중 오류 발생:', err.message);
   }
 } else {
-  console.warn('⚠️ 경고: Supabase 설정(URL/KEY)이 누락되었습니다. DB 저장 및 랭킹 기능이 제한됩니다.');
+  console.warn('⚠️ 경고: DATABASE_URL이 누락되었습니다. DB 저장 및 랭킹 기능이 제한됩니다.');
 }
 
 // 테스트용 루트 API
@@ -56,8 +60,8 @@ app.get('/', (req, res) => {
 app.get('/api/ranking', async (req, res) => {
   try {
     const { table } = req.query;
-    if (!supabase) {
-      console.warn('⚠️ Supabase 미설정으로 더미 랭킹 데이터를 반환합니다.');
+    if (!pool) {
+      console.warn('⚠️ Neon DB 미설정으로 더미 랭킹 데이터를 반환합니다.');
       const dummyData = [
         { student_name: '구구단박사', table_number: 9, score: 100, total_time_ms: 8500 },
         { student_name: '바나나친구', table_number: 2, score: 100, total_time_ms: 12000 },
@@ -68,20 +72,17 @@ app.get('/api/ranking', async (req, res) => {
       }
       return res.json(dummyData);
     }
-    let query = supabase
-      .from('records')
-      .select('*')
-      .order('score', { ascending: false })
-      .order('total_time_ms', { ascending: true })
-      .limit(10);
 
+    let query = 'SELECT student_name, table_number, score, total_time_ms FROM records';
+    let params = [];
     if (table && table !== 'all') {
-      query = query.eq('table_number', parseInt(table));
+      query += ' WHERE table_number = $1';
+      params.push(parseInt(table));
     }
+    query += ' ORDER BY score DESC, total_time_ms ASC LIMIT 10';
 
-    const { data, error } = await query;
-    if (error) throw error;
-    res.json(data);
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
   } catch (error) {
     console.error('랭킹 조회 오류:', error);
     res.status(500).json({ error: '랭킹을 불러오지 못했습니다.' });
@@ -157,8 +158,8 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
       };
     }
 
-    // Supabase 기록 저장
-    if (supabase && userName && evaluation.totalCorrect !== undefined) {
+    // Neon DB 기록 저장
+    if (pool && userName && evaluation.totalCorrect !== undefined) {
       const correct = evaluation.totalCorrect || 0;
       let score = 0;
       if (mode === 'reverse') {
@@ -170,20 +171,14 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
       }
       const totalTimeMs = parseInt(totalTime) || 0;
       
-      const { error: dbError } = await supabase
-        .from('records')
-        .insert([
-          {
-            student_name: userName,
-            table_number: parseInt(table),
-            mode: mode,
-            score: score,
-            total_time_ms: totalTimeMs
-          }
-        ]);
-        
-      if (dbError) {
-        console.error('Supabase DB 저장 중 오류:', dbError);
+      try {
+        await pool.query(
+          'INSERT INTO records (student_name, table_number, mode, score, total_time_ms) VALUES ($1, $2, $3, $4, $5)',
+          [userName, parseInt(table), mode, score, totalTimeMs]
+        );
+        console.log('✅ Neon DB에 기록 저장 성공');
+      } catch (dbError) {
+        console.error('❌ Neon DB 저장 중 오류:', dbError.message);
       }
     }
 
