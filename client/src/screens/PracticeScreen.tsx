@@ -81,7 +81,8 @@ export default function PracticeScreen() {
     formData.append('userName', userName);
     formData.append('totalTime', String(time));
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const apiUrl = rawApiUrl.replace(/\/$/, '');
     console.log('🔊 채점 요청을 보낼 API 주소:', `${apiUrl}/api/evaluate`);
 
     try {

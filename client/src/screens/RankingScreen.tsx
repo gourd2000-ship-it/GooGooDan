@@ -24,7 +24,8 @@ export default function RankingScreen() {
   useEffect(() => {
     const fetchRanking = async () => {
       setLoading(true);
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = rawApiUrl.replace(/\/$/, '');
       try {
         const url = selectedTab === 'all' 
           ? `${apiUrl}/api/ranking` 
