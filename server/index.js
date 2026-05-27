@@ -130,7 +130,7 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
         ... (총 10문제)
       ],
       "totalCorrect": 맞힌 개수,
-      "feedback": "학생에게 해줄 친절한 격려의 말"
+      "feedback": "학생에게 해줄 친절하고 따뜻한 격려의 말 (반드시 3문장 이하로 작성해주세요.)"
     }
     `;
 
