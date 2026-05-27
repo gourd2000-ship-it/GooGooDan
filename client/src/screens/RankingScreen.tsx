@@ -31,14 +31,22 @@ export default function RankingScreen() {
           : `${apiUrl}/api/ranking?table=${selectedTab}`;
         const res = await fetch(url);
         const data = await res.json();
-        if (data && data.length > 0) {
+        const filteredDummy = selectedTab === 'all' 
+          ? dummyRanking 
+          : dummyRanking.filter(r => r.table_number === selectedTab);
+
+        if (data) {
+          // 데이터가 존재하면 설정 (성공 응답으로 빈 배열이 오면 그대로 빈 상태를 보여줌)
           setRanking(data);
         } else {
-          setRanking(dummyRanking);
+          setRanking(filteredDummy);
         }
       } catch (error) {
         console.error('Failed to fetch ranking:', error);
-        setRanking(dummyRanking);
+        const filteredDummy = selectedTab === 'all' 
+          ? dummyRanking 
+          : dummyRanking.filter(r => r.table_number === selectedTab);
+        setRanking(filteredDummy);
       } finally {
         setLoading(false);
       }
@@ -92,41 +100,47 @@ export default function RankingScreen() {
           </div>
         ) : (
           <div className="space-y-4">
-            {ranking.map((res, idx) => (
-              <div 
-                key={idx} 
-                className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all hover:scale-[1.01] ${
-                  idx === 0 ? 'bg-amber-50 border-amber-200 shadow-md' : 'bg-white border-slate-100'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 flex items-center justify-center rounded-full font-black text-xl ${
-                    idx === 0 ? 'bg-amber-400 text-white' : 
-                    idx === 1 ? 'bg-slate-300 text-white' :
-                    idx === 2 ? 'bg-orange-300 text-white' : 'bg-slate-100 text-slate-400'
-                  }`}>
-                    {idx + 1}
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                      {res.student_name}
-                      {idx === 0 && <Star size={16} fill="currentColor" className="text-amber-500" />}
-                    </div>
-                    <div className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-md">
-                      {res.table_number}단
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="text-right">
-                  <div className="text-2xl font-black text-blue-600">{res.score}점</div>
-                  <div className="flex items-center justify-end gap-1 text-slate-400 text-sm font-mono">
-                    <Timer size={14} />
-                    {(res.total_time_ms / 1000).toFixed(2)}초
-                  </div>
-                </div>
+            {ranking.length === 0 ? (
+              <div className="py-16 text-center text-slate-400 font-bold">
+                아직 이 단의 랭킹 기록이 없습니다. 제일 먼저 도전해 보세요! 🏃
               </div>
-            ))}
+            ) : (
+              ranking.map((res, idx) => (
+                <div 
+                  key={idx} 
+                  className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all hover:scale-[1.01] ${
+                    idx === 0 ? 'bg-amber-50 border-amber-200 shadow-md' : 'bg-white border-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 flex items-center justify-center rounded-full font-black text-xl ${
+                      idx === 0 ? 'bg-amber-400 text-white' : 
+                      idx === 1 ? 'bg-slate-300 text-white' :
+                      idx === 2 ? 'bg-orange-300 text-white' : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        {res.student_name}
+                        {idx === 0 && <Star size={16} fill="currentColor" className="text-amber-500" />}
+                      </div>
+                      <div className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-md">
+                        {res.table_number}단
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-blue-600">{res.score}점</div>
+                    <div className="flex items-center justify-end gap-1 text-slate-400 text-sm font-mono">
+                      <Timer size={14} />
+                      {(res.total_time_ms / 1000).toFixed(2)}초
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
         

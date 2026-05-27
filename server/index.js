@@ -55,15 +55,19 @@ app.get('/', (req, res) => {
 // 랭킹 조회 API (8단계)
 app.get('/api/ranking', async (req, res) => {
   try {
+    const { table } = req.query;
     if (!supabase) {
       console.warn('⚠️ Supabase 미설정으로 더미 랭킹 데이터를 반환합니다.');
-      return res.json([
+      const dummyData = [
         { student_name: '구구단박사', table_number: 9, score: 100, total_time_ms: 8500 },
         { student_name: '바나나친구', table_number: 2, score: 100, total_time_ms: 12000 },
         { student_name: '척척박사', table_number: 5, score: 88, total_time_ms: 15000 },
-      ]);
+      ];
+      if (table && table !== 'all') {
+        return res.json(dummyData.filter(item => item.table_number === parseInt(table)));
+      }
+      return res.json(dummyData);
     }
-    const { table } = req.query;
     let query = supabase
       .from('records')
       .select('*')
