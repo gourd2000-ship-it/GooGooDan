@@ -143,8 +143,8 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
       return res.status(500).json({ error: '서버의 GEMINI_API_KEY 환경변수가 누락되었습니다.' });
     }
 
-    // Gemini 모델 설정 (현재 지원되는 최신 flash 모델 사용)
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    // Gemini 모델 설정 (더 빠르고 정확한 최신 2.5 flash 모델 적용)
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // 프롬프트(명령어) 작성
     const prompt = `
