@@ -13,8 +13,23 @@ const { Pool } = require('pg');
 const app = express();
 const port = process.env.PORT || 5000;
 
-// 미들웨어 설정
-app.use(cors());
+// 미들웨어 설정 (CORS 제한을 통한 프론트엔드 도메인 보호)
+const allowedOrigins = [
+  'https://goo-goo-dan.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    // 모바일 앱이나 curl 등의 요청 허용(origin이 없는 경우)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'CORS 정책에 의해 허용되지 않는 도메인입니다.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  }
+}));
 app.use(express.json());
 
 // 멀터(Multer) 설정 - 음성 파일을 메모리에 임시 저장 (Gemini로 바로 보내기 위함)
@@ -97,7 +112,31 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     }
 
     const { table, mode, expectedAnswers, userName, totalTime } = req.body;
-    console.log(`[채점 요청] 사용자: ${userName}, ${table}단, 파일크기: ${req.file.size} bytes, 형식: ${req.file.mimetype}`);
+
+    // 입력값 검증 (보안 강화 및 SQL injection/XSS 사전 예방)
+    const parsedTable = parseInt(table);
+    if (isNaN(parsedTable) || parsedTable < 2 || parsedTable > 9) {
+      return res.status(400).json({ error: '유효하지 않은 단 선택입니다. (2~9단만 가능)' });
+    }
+
+    const validModes = ['sequential', 'random', 'reverse'];
+    if (!validModes.includes(mode)) {
+      return res.status(400).json({ error: '유효하지 않은 연습 모드입니다.' });
+    }
+
+    // 이름 검증: 특수문자, 스크립트 코드 필터링
+    const cleanName = userName ? userName.trim() : '';
+    const nameRegex = /^[a-zA-Z0-9가-힣\s]{1,10}$/;
+    if (!cleanName || !nameRegex.test(cleanName)) {
+      return res.status(400).json({ error: '이름은 특수문자 없이 1~10자 이내로 입력해주세요.' });
+    }
+
+    const parsedTotalTime = parseInt(totalTime);
+    if (isNaN(parsedTotalTime) || parsedTotalTime < 0) {
+      return res.status(400).json({ error: '유효하지 않은 소요 시간입니다.' });
+    }
+
+    console.log(`[채점 요청] 사용자: ${cleanName}, ${parsedTable}단, 파일크기: ${req.file.size} bytes, 형식: ${req.file.mimetype}`);
     
     if (!genAI) {
       console.error('❌ Gemini API 클라이언트가 초기화되지 않았습니다.');
@@ -110,7 +149,7 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     // 프롬프트(명령어) 작성
     const prompt = `
     당신은 초등학교 구구단 시험을 채점하는 선생님입니다.
-    사용자가 ${table}단 구구단을 말한 음성 파일입니다.
+    사용자가 ${parsedTable}단 구구단을 말한 음성 파일입니다.
     
     [채점 지침]
     1. 배경 소음이나 발음이 부정확해도 문맥상 구구단 정답이라면 정답으로 인정해주세요.
@@ -159,7 +198,7 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     }
 
     // Neon DB 기록 저장
-    if (pool && userName && evaluation.totalCorrect !== undefined) {
+    if (pool && cleanName && evaluation.totalCorrect !== undefined) {
       const correct = evaluation.totalCorrect || 0;
       let score = 0;
       if (mode === 'reverse') {
@@ -169,12 +208,12 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
       } else {
         score = correct * 10;
       }
-      const totalTimeMs = parseInt(totalTime) || 0;
+      const totalTimeMs = parsedTotalTime || 0;
       
       try {
         await pool.query(
           'INSERT INTO records (student_name, table_number, mode, score, total_time_ms) VALUES ($1, $2, $3, $4, $5)',
-          [userName, parseInt(table), mode, score, totalTimeMs]
+          [cleanName, parsedTable, mode, score, totalTimeMs]
         );
         console.log('✅ Neon DB에 기록 저장 성공');
       } catch (dbError) {
