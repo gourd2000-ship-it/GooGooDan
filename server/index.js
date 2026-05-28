@@ -143,8 +143,8 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
       return res.status(500).json({ error: '서버의 GEMINI_API_KEY 환경변수가 누락되었습니다.' });
     }
 
-    // Gemini 모델 설정 (가장 가성비 좋은 안정적인 1.5 flash 모델 적용)
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Gemini 모델 설정 (비용을 극대화하여 아낄 수 있는 최신 2.0 flash-lite 모델 적용)
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     // 프롬프트(명령어) 작성
     const prompt = `
