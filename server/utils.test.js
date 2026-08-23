@@ -9,6 +9,9 @@ const {
   getAllowedOrigins,
   validateAudioFile,
   MAX_AUDIO_SIZE_BYTES,
+  validateTapRecord,
+  validatePracticeType,
+  calculateScore,
 } = require('./utils');
 
 test('parseGeminiJson: 마크다운 코드 블록이 포함되어 있어도 정상 파싱되어야 함', () => {
@@ -104,4 +107,37 @@ test('validateAudioFile: 오디오 형식과 파일 크기를 모두 제한해�
   assert.strictEqual(validateAudioFile({ size: 500, buffer: Buffer.from('test'), mimetype: 'audio/webm; codecs=opus' }).valid, true);
   assert.strictEqual(validateAudioFile({ size: 500, buffer: Buffer.from('test'), mimetype: 'text/plain' }).valid, false);
   assert.strictEqual(validateAudioFile({ size: MAX_AUDIO_SIZE_BYTES + 1, buffer: Buffer.from('test'), mimetype: 'audio/webm' }).valid, false);
+});
+
+test('validateTapRecord: 누르는 구구단 기록의 게임 모드·점수·입력을 서버에서 검증해야 함', () => {
+  const record = validateTapRecord({
+    table: '4',
+    mode: 'reverse',
+    gameMode: 'expression',
+    userName: ' 구구단 ',
+    totalCorrect: '6',
+    totalTime: '9000',
+  });
+
+  assert.deepStrictEqual(record, {
+    valid: true,
+    value: {
+      table: 4,
+      mode: 'reverse',
+      gameMode: 'expression',
+      userName: '구구단',
+      totalCorrect: 6,
+      totalTime: 9000,
+      score: 72,
+    },
+  });
+  assert.strictEqual(validateTapRecord({ table: 4, mode: 'random', gameMode: 'unknown', userName: '학생', totalCorrect: 10, totalTime: 1 }).valid, false);
+  assert.strictEqual(validateTapRecord({ table: 4, mode: 'random', gameMode: 'mixed', userName: '학생', totalCorrect: 11, totalTime: 1 }).valid, false);
+  assert.strictEqual(calculateScore(6, 'random'), 90);
+});
+
+test('validatePracticeType: 말하기와 누르기 랭킹 타입만 허용해야 함', () => {
+  assert.strictEqual(validatePracticeType(undefined), 'speech');
+  assert.strictEqual(validatePracticeType('tap'), 'tap');
+  assert.strictEqual(validatePracticeType('unknown'), null);
 });

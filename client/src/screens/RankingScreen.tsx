@@ -2,38 +2,46 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Trophy, Home, Timer, Star } from 'lucide-react';
 import { API_URL } from '../config';
+import type { PracticeType } from '../lib/practice';
 
-interface Record {
+interface RankingRecord {
   student_name: string;
   table_number: number;
   score: number;
   total_time_ms: number;
 }
 
-const dummyRanking: Record[] = [
-  { student_name: '구구단박사', table_number: 9, score: 100, total_time_ms: 8500 },
-  { student_name: '바나나친구', table_number: 2, score: 100, total_time_ms: 12000 },
-  { student_name: '척척박사', table_number: 5, score: 88, total_time_ms: 15000 },
-];
+const dummyRanking: Record<PracticeType, RankingRecord[]> = {
+  speech: [
+    { student_name: '구구단박사', table_number: 9, score: 100, total_time_ms: 8500 },
+    { student_name: '바나나친구', table_number: 2, score: 100, total_time_ms: 12000 },
+    { student_name: '척척박사', table_number: 5, score: 88, total_time_ms: 15000 },
+  ],
+  tap: [
+    { student_name: '누르기달인', table_number: 7, score: 100, total_time_ms: 7200 },
+    { student_name: '척척누르미', table_number: 3, score: 90, total_time_ms: 9800 },
+  ],
+};
 
 export default function RankingScreen() {
   const { setScreen } = useStore();
-  const [ranking, setRanking] = useState<Record[]>([]);
+  const [ranking, setRanking] = useState<RankingRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'all' | number>('all');
+  const [selectedPracticeType, setSelectedPracticeType] = useState<PracticeType>('speech');
 
   useEffect(() => {
     const fetchRanking = async () => {
       setLoading(true);
       try {
-        const url = selectedTab === 'all' 
-          ? `${API_URL}/api/ranking` 
-          : `${API_URL}/api/ranking?table=${selectedTab}`;
+        const params = new URLSearchParams({ practiceType: selectedPracticeType });
+        if (selectedTab !== 'all') params.set('table', String(selectedTab));
+        const url = `${API_URL}/api/ranking?${params.toString()}`;
         const res = await fetch(url);
         const data = await res.json();
         const filteredDummy = selectedTab === 'all' 
-          ? dummyRanking 
-          : dummyRanking.filter(r => r.table_number === selectedTab);
+          ? dummyRanking[selectedPracticeType]
+          : dummyRanking[selectedPracticeType].filter(r => r.table_number === selectedTab);
 
         if (data && data.length > 0) {
           setRanking(data);
@@ -43,8 +51,8 @@ export default function RankingScreen() {
       } catch (error) {
         console.error('Failed to fetch ranking:', error);
         const filteredDummy = selectedTab === 'all' 
-          ? dummyRanking 
-          : dummyRanking.filter(r => r.table_number === selectedTab);
+          ? dummyRanking[selectedPracticeType]
+          : dummyRanking[selectedPracticeType].filter(r => r.table_number === selectedTab);
         setRanking(filteredDummy);
       } finally {
         setLoading(false);
@@ -52,7 +60,7 @@ export default function RankingScreen() {
     };
 
     fetchRanking();
-  }, [selectedTab]);
+  }, [selectedPracticeType, selectedTab]);
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-slate-50 p-4">
@@ -63,6 +71,7 @@ export default function RankingScreen() {
             <h1 className="text-4xl font-black text-slate-800">명예의 전당</h1>
           </div>
           <button
+            aria-label="홈으로 돌아가기"
             onClick={() => setScreen('home')}
             className="p-3 bg-slate-100 text-slate-600 rounded-full hover:bg-slate-200 transition-colors"
           >
@@ -70,7 +79,24 @@ export default function RankingScreen() {
           </button>
         </div>
 
-        {/* 탭 메뉴 */}
+        <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-slate-50 p-2">
+          {([
+            { value: 'speech', label: '말하는 구구단' },
+            { value: 'tap', label: '누르는 구구단' },
+          ] as const).map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={selectedPracticeType === value}
+              onClick={() => setSelectedPracticeType(value)}
+              className={`rounded-xl px-3 py-3 font-bold transition-colors ${selectedPracticeType === value ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* 단 필터 */}
         <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
           <button
             onClick={() => setSelectedTab('all')}

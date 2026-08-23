@@ -3,6 +3,7 @@ import { useStore } from './store/useStore';
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
 import PracticeScreen from './screens/PracticeScreen';
+import TapPracticeScreen from './screens/TapPracticeScreen';
 import ResultScreen from './screens/ResultScreen';
 import RankingScreen from './screens/RankingScreen';
 
@@ -23,6 +24,7 @@ function App() {
       {currentScreen === 'name' && <LoginScreen />}
       {currentScreen === 'home' && <HomeScreen />}
       {currentScreen === 'practice' && <PracticeScreen />}
+      {currentScreen === 'tapPractice' && <TapPracticeScreen />}
       {currentScreen === 'loading' && <LoadingScreen />}
       {currentScreen === 'result' && <ResultScreen />}
       {currentScreen === 'ranking' && <RankingScreen />}

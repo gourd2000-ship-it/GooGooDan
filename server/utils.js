@@ -1,6 +1,9 @@
 const MAX_AUDIO_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_AUDIO_MIME_TYPES = new Set(['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav']);
 const DEFAULT_CLIENT_ORIGINS = ['http://localhost:5173', 'https://goo-goo-dan.vercel.app'];
+const VALID_PRACTICE_TYPES = new Set(['speech', 'tap']);
+const VALID_TAP_GAME_MODES = new Set(['answer', 'expression', 'mixed']);
+const VALID_PRACTICE_ORDERS = new Set(['sequential', 'random', 'reverse']);
 const FALLBACK_FEEDBACK = '음성이 명확하지 않거나 들리지 않아요. 다시 한 번 큰 소리로 말씀해 주시겠어요?';
 
 /**
@@ -147,10 +150,44 @@ function validateAudioFile(file) {
   return { valid: true };
 }
 
+function calculateScore(totalCorrect, mode) {
+  if (mode === 'reverse') return totalCorrect * 12;
+  if (mode === 'random') return totalCorrect * 15;
+  return totalCorrect * 10;
+}
+
+function validatePracticeType(value) {
+  if (value === undefined || value === null || value === '') return 'speech';
+  return typeof value === 'string' && VALID_PRACTICE_TYPES.has(value) ? value : null;
+}
+
+function validateTapRecord(input) {
+  const table = Number(input?.table);
+  const mode = input?.mode;
+  const gameMode = input?.gameMode;
+  const userName = typeof input?.userName === 'string' ? input.userName.trim() : '';
+  const totalCorrect = Number(input?.totalCorrect);
+  const totalTime = Number(input?.totalTime);
+  const nameRegex = /^[a-zA-Z0-9가-힣\s]{1,10}$/;
+
+  if (!Number.isInteger(table) || table < 2 || table > 9) return { valid: false, reason: '유효하지 않은 단 선택입니다.' };
+  if (!VALID_PRACTICE_ORDERS.has(mode)) return { valid: false, reason: '유효하지 않은 연습 순서입니다.' };
+  if (!VALID_TAP_GAME_MODES.has(gameMode)) return { valid: false, reason: '유효하지 않은 누르는 구구단 모드입니다.' };
+  if (!userName || !nameRegex.test(userName)) return { valid: false, reason: '이름은 특수문자 없이 1~10자 이내로 입력해주세요.' };
+  if (!Number.isInteger(totalCorrect) || totalCorrect < 0 || totalCorrect > 10) return { valid: false, reason: '유효하지 않은 정답 수입니다.' };
+  if (!Number.isInteger(totalTime) || totalTime < 0) return { valid: false, reason: '유효하지 않은 소요 시간입니다.' };
+
+  return {
+    valid: true,
+    value: { table, mode, gameMode, userName, totalCorrect, totalTime, score: calculateScore(totalCorrect, mode) },
+  };
+}
+
 module.exports = {
   ALLOWED_AUDIO_MIME_TYPES,
   MAX_AUDIO_SIZE_BYTES,
   cleanMimeType,
+  calculateScore,
   getAllowedOrigins,
   getGeminiApiKey,
   normalizeEvaluation,
@@ -158,4 +195,6 @@ module.exports = {
   validateAudioFile,
   validateExpectedAnswers,
   validateExpectedQuestions,
+  validatePracticeType,
+  validateTapRecord,
 };

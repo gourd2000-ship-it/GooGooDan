@@ -19,6 +19,8 @@ const {
   parseGeminiJson,
   validateAudioFile,
   validateExpectedQuestions,
+  validatePracticeType,
+  validateTapRecord,
 } = require('./utils');
 
 const app = express();
@@ -86,24 +88,35 @@ app.get('/api/health', (req, res) => {
 app.get('/api/ranking', async (req, res) => {
   try {
     const { table } = req.query;
+    const practiceType = validatePracticeType(req.query.practiceType);
+    if (!practiceType) {
+      return res.status(400).json({ error: '유효하지 않은 학습 방식입니다.' });
+    }
+    const parsedTable = table && table !== 'all' ? Number(table) : null;
+    if (parsedTable !== null && (!Number.isInteger(parsedTable) || parsedTable < 2 || parsedTable > 9)) {
+      return res.status(400).json({ error: '유효하지 않은 단 선택입니다.' });
+    }
     if (!pool) {
       console.warn('⚠️ Neon DB 미설정으로 더미 랭킹 데이터를 반환합니다.');
-      const dummyData = [
+      const dummyData = practiceType === 'tap' ? [
+        { student_name: '누르기달인', table_number: 7, score: 100, total_time_ms: 7200 },
+        { student_name: '척척누르미', table_number: 3, score: 90, total_time_ms: 9800 },
+      ] : [
         { student_name: '구구단박사', table_number: 9, score: 100, total_time_ms: 8500 },
         { student_name: '바나나친구', table_number: 2, score: 100, total_time_ms: 12000 },
         { student_name: '척척박사', table_number: 5, score: 88, total_time_ms: 15000 },
       ];
-      if (table && table !== 'all') {
-        return res.json(dummyData.filter(item => item.table_number === parseInt(table)));
+      if (parsedTable !== null) {
+        return res.json(dummyData.filter(item => item.table_number === parsedTable));
       }
       return res.json(dummyData);
     }
 
-    let query = 'SELECT student_name, table_number, score, total_time_ms FROM records';
-    let params = [];
-    if (table && table !== 'all') {
-      query += ' WHERE table_number = $1';
-      params.push(parseInt(table));
+    let query = 'SELECT student_name, table_number, score, total_time_ms FROM records WHERE practice_type = $1';
+    const params = [practiceType];
+    if (parsedTable !== null) {
+      query += ' AND table_number = $2';
+      params.push(parsedTable);
     }
     query += ' ORDER BY score DESC, total_time_ms ASC LIMIT 10';
 
@@ -112,6 +125,28 @@ app.get('/api/ranking', async (req, res) => {
   } catch (error) {
     console.error('랭킹 조회 오류:', error);
     res.status(500).json({ error: '랭킹을 불러오지 못했습니다.' });
+  }
+});
+
+app.post('/api/record', async (req, res) => {
+  const validation = validateTapRecord(req.body);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.reason });
+  }
+  if (!pool) {
+    return res.status(503).json({ error: '기록 저장 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.' });
+  }
+
+  const record = validation.value;
+  try {
+    await pool.query(
+      'INSERT INTO records (student_name, table_number, mode, score, total_time_ms, practice_type, tap_game_mode) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [record.userName, record.table, record.mode, record.score, record.totalTime, 'tap', record.gameMode],
+    );
+    return res.status(201).json({ score: record.score, saved: true });
+  } catch (error) {
+    console.error('❌ 누르는 구구단 기록 저장 중 오류:', error.message);
+    return res.status(500).json({ error: '기록을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.' });
   }
 });
 
@@ -240,8 +275,8 @@ app.post('/api/evaluate', (req, res) => {
       
       try {
         await pool.query(
-          'INSERT INTO records (student_name, table_number, mode, score, total_time_ms) VALUES ($1, $2, $3, $4, $5)',
-          [cleanName, parsedTable, mode, score, totalTimeMs]
+          'INSERT INTO records (student_name, table_number, mode, score, total_time_ms, practice_type, tap_game_mode) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [cleanName, parsedTable, mode, score, totalTimeMs, 'speech', null]
         );
         console.log('✅ Neon DB에 기록 저장 성공');
       } catch (dbError) {
