@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Trophy, Home, Timer, Star } from 'lucide-react';
+import { API_URL } from '../config';
 
 interface Record {
   student_name: string;
@@ -24,12 +25,10 @@ export default function RankingScreen() {
   useEffect(() => {
     const fetchRanking = async () => {
       setLoading(true);
-      const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const apiUrl = rawApiUrl.replace(/\/$/, '');
       try {
         const url = selectedTab === 'all' 
-          ? `${apiUrl}/api/ranking` 
-          : `${apiUrl}/api/ranking?table=${selectedTab}`;
+          ? `${API_URL}/api/ranking` 
+          : `${API_URL}/api/ranking?table=${selectedTab}`;
         const res = await fetch(url);
         const data = await res.json();
         const filteredDummy = selectedTab === 'all' 

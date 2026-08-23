@@ -9,6 +9,7 @@ const cors = require('cors');
 const multer = require('multer');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Pool } = require('pg');
+const { parseGeminiJson, validateExpectedAnswers } = require('./utils');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -146,6 +147,8 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     // Gemini 모델 설정 (비용을 극대화하여 아낄 수 있는 최신 2.0 flash-lite 모델 적용)
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
+    const safeExpectedAnswers = validateExpectedAnswers(expectedAnswers);
+
     // 프롬프트(명령어) 작성
     const prompt = `
     당신은 초등학교 구구단 시험을 채점하는 선생님입니다.
@@ -153,7 +156,7 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     
     [채점 지침]
     1. 배경 소음이나 발음이 부정확해도 문맥상 구구단 정답이라면 정답으로 인정해주세요.
-    2. 기대하는 정답 순서는 다음과 같습니다: ${expectedAnswers}
+    2. 기대하는 정답 순서는 다음과 같습니다: ${JSON.stringify(safeExpectedAnswers)}
     3. 사용자가 숫자를 한국어로 말하거나(이, 사, 육...) 아라비아 숫자로 말해도 모두 인정합니다.
     
     음성을 분석해서 반드시 아래의 JSON 형식으로만 응답해주세요. 설명이나 마크다운 기호 없이 순수 JSON만 보내주세요.
@@ -186,10 +189,9 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     try {
       const result = await model.generateContent([prompt, audioPart]);
       const responseText = result.response.text();
-      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-      evaluation = JSON.parse(cleanJson);
+      evaluation = parseGeminiJson(responseText);
     } catch (parseError) {
-      console.error('Gemini 응답 파싱 실패:', parseError);
+      console.error('Gemini 응답 또는 처리 실패:', parseError);
       evaluation = {
         results: [],
         totalCorrect: 0,

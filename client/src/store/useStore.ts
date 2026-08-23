@@ -2,13 +2,26 @@ import { create } from 'zustand';
 
 export type ScreenType = 'name' | 'home' | 'practice' | 'loading' | 'result' | 'ranking';
 
+export interface EvaluationItem {
+  question: string;
+  expected: string;
+  spoken: string;
+  isCorrect: boolean;
+}
+
+export interface EvaluationResult {
+  results: EvaluationItem[];
+  totalCorrect: number;
+  feedback: string;
+}
+
 interface AppState {
   currentScreen: ScreenType;
   userName: string;
   selectedTable: number;
   mode: 'sequential' | 'random' | 'reverse';
   expectedQuestions: string[];
-  evaluationResult: any | null;
+  evaluationResult: EvaluationResult | null;
   totalTime: number;
   
   // Actions
@@ -17,7 +30,7 @@ interface AppState {
   setSelectedTable: (table: number) => void;
   setMode: (mode: 'sequential' | 'random' | 'reverse') => void;
   setExpectedQuestions: (questions: string[]) => void;
-  setEvaluationResult: (result: any) => void;
+  setEvaluationResult: (result: EvaluationResult | null) => void;
   setTotalTime: (time: number) => void;
   resetApp: () => void;
 }

@@ -1,5 +1,5 @@
 
-import { useStore } from '../store/useStore';
+import { useStore, EvaluationItem } from '../store/useStore';
 import { RotateCcw } from 'lucide-react';
 
 export default function ResultScreen() {
@@ -35,7 +35,7 @@ export default function ResultScreen() {
         </div>
 
         <div className="space-y-3 mb-10">
-          {results.map((res: any, idx: number) => (
+          {results.map((res: EvaluationItem, idx: number) => (
             <div key={idx} className={`flex items-center justify-between p-4 rounded-xl border-2 ${res.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
               <span className="text-xl font-bold text-slate-700">{res.question}</span>
               <div className="flex items-center gap-4">

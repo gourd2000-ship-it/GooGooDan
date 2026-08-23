@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { Mic, Square, ChevronDown } from 'lucide-react';
+import { API_URL } from '../config';
 
 export default function PracticeScreen() {
   const { userName, selectedTable, mode, expectedQuestions, setScreen, setEvaluationResult, setTotalTime } = useStore();
@@ -30,8 +31,8 @@ export default function PracticeScreen() {
     let timer: any;
     if (isRecording) {
       timer = setInterval(() => {
-        setTime((prev) => prev + 10); // 10ms
-      }, 10);
+        setTime((prev) => prev + 100); // 100ms (10배 리렌더링 최적화)
+      }, 100);
     }
     return () => clearInterval(timer);
   }, [isRecording]);
@@ -81,12 +82,10 @@ export default function PracticeScreen() {
     formData.append('userName', userName);
     formData.append('totalTime', String(time));
 
-    const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    const apiUrl = rawApiUrl.replace(/\/$/, '');
-    console.log('🔊 채점 요청을 보낼 API 주소:', `${apiUrl}/api/evaluate`);
+    console.log('🔊 채점 요청을 보낼 API 주소:', `${API_URL}/api/evaluate`);
 
     try {
-      const res = await fetch(`${apiUrl}/api/evaluate`, {
+      const res = await fetch(`${API_URL}/api/evaluate`, {
         method: 'POST',
         body: formData,
       });
