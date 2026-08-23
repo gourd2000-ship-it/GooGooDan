@@ -93,6 +93,6 @@ export function buildTapQuestions(
 }
 
 export function calculateScore(totalCorrect: number, order: PracticeOrder): number {
-  const multiplier = order === 'reverse' ? 12 : order === 'random' ? 15 : 10;
+  const multiplier = order === 'reverse' ? 12 : order === 'random' ? 20 : 10;
   return totalCorrect * multiplier;
 }

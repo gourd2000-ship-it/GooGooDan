@@ -11,7 +11,9 @@ describe('RankingScreen', () => {
   beforeEach(() => {
     useStore.getState().resetApp();
     useStore.setState({ currentScreen: 'ranking' });
-    fetchMock.mockResolvedValue({ json: async () => [] });
+    fetchMock.mockResolvedValue({
+      json: async () => [{ student_name: '기록친구', table_number: 3, mode: 'random', score: 200, total_time_ms: 9000 }],
+    });
     vi.stubGlobal('fetch', fetchMock);
   });
 
@@ -22,6 +24,7 @@ describe('RankingScreen', () => {
   it('requests an isolated tap ranking when the tap hall-of-fame tab is selected', async () => {
     render(<RankingScreen />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(await screen.findByText('섞어서')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '누르는 구구단' }));
 

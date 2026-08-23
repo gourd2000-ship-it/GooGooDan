@@ -70,6 +70,7 @@ describe('calculateScore', () => {
   it('uses the existing score multiplier for each question order', () => {
     expect(calculateScore(6, 'sequential')).toBe(60);
     expect(calculateScore(6, 'reverse')).toBe(72);
-    expect(calculateScore(6, 'random')).toBe(90);
+    expect(calculateScore(6, 'random')).toBe(120);
+    expect(calculateScore(10, 'random')).toBe(200);
   });
 });

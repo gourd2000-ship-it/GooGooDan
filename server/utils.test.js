@@ -133,7 +133,8 @@ test('validateTapRecord: 누르는 구구단 기록의 게임 모드·점수·�
   });
   assert.strictEqual(validateTapRecord({ table: 4, mode: 'random', gameMode: 'unknown', userName: '학생', totalCorrect: 10, totalTime: 1 }).valid, false);
   assert.strictEqual(validateTapRecord({ table: 4, mode: 'random', gameMode: 'mixed', userName: '학생', totalCorrect: 11, totalTime: 1 }).valid, false);
-  assert.strictEqual(calculateScore(6, 'random'), 90);
+  assert.strictEqual(calculateScore(6, 'random'), 120);
+  assert.strictEqual(calculateScore(10, 'random'), 200);
 });
 
 test('validatePracticeType: 말하기와 누르기 랭킹 타입만 허용해야 함', () => {

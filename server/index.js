@@ -99,12 +99,12 @@ app.get('/api/ranking', async (req, res) => {
     if (!pool) {
       console.warn('⚠️ Neon DB 미설정으로 더미 랭킹 데이터를 반환합니다.');
       const dummyData = practiceType === 'tap' ? [
-        { student_name: '누르기달인', table_number: 7, score: 100, total_time_ms: 7200 },
-        { student_name: '척척누르미', table_number: 3, score: 90, total_time_ms: 9800 },
+        { student_name: '누르기달인', table_number: 7, mode: 'random', score: 200, total_time_ms: 7200 },
+        { student_name: '척척누르미', table_number: 3, mode: 'reverse', score: 90, total_time_ms: 9800 },
       ] : [
-        { student_name: '구구단박사', table_number: 9, score: 100, total_time_ms: 8500 },
-        { student_name: '바나나친구', table_number: 2, score: 100, total_time_ms: 12000 },
-        { student_name: '척척박사', table_number: 5, score: 88, total_time_ms: 15000 },
+        { student_name: '구구단박사', table_number: 9, mode: 'random', score: 200, total_time_ms: 8500 },
+        { student_name: '바나나친구', table_number: 2, mode: 'sequential', score: 100, total_time_ms: 12000 },
+        { student_name: '척척박사', table_number: 5, mode: 'reverse', score: 88, total_time_ms: 15000 },
       ];
       if (parsedTable !== null) {
         return res.json(dummyData.filter(item => item.table_number === parsedTable));
@@ -112,7 +112,7 @@ app.get('/api/ranking', async (req, res) => {
       return res.json(dummyData);
     }
 
-    let query = 'SELECT student_name, table_number, score, total_time_ms FROM records WHERE practice_type = $1';
+    let query = 'SELECT student_name, table_number, mode, score, total_time_ms FROM records WHERE practice_type = $1';
     const params = [practiceType];
     if (parsedTable !== null) {
       query += ' AND table_number = $2';
@@ -267,7 +267,7 @@ app.post('/api/evaluate', (req, res) => {
       if (mode === 'reverse') {
         score = correct * 12;
       } else if (mode === 'random') {
-        score = correct * 15;
+        score = correct * 20;
       } else {
         score = correct * 10;
       }

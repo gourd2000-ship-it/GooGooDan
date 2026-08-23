@@ -7,19 +7,20 @@ import type { PracticeType } from '../lib/practice';
 interface RankingRecord {
   student_name: string;
   table_number: number;
+  mode: 'sequential' | 'reverse' | 'random';
   score: number;
   total_time_ms: number;
 }
 
 const dummyRanking: Record<PracticeType, RankingRecord[]> = {
   speech: [
-    { student_name: '구구단박사', table_number: 9, score: 100, total_time_ms: 8500 },
-    { student_name: '바나나친구', table_number: 2, score: 100, total_time_ms: 12000 },
-    { student_name: '척척박사', table_number: 5, score: 88, total_time_ms: 15000 },
+    { student_name: '구구단박사', table_number: 9, mode: 'random', score: 200, total_time_ms: 8500 },
+    { student_name: '바나나친구', table_number: 2, mode: 'sequential', score: 100, total_time_ms: 12000 },
+    { student_name: '척척박사', table_number: 5, mode: 'reverse', score: 88, total_time_ms: 15000 },
   ],
   tap: [
-    { student_name: '누르기달인', table_number: 7, score: 100, total_time_ms: 7200 },
-    { student_name: '척척누르미', table_number: 3, score: 90, total_time_ms: 9800 },
+    { student_name: '누르기달인', table_number: 7, mode: 'random', score: 200, total_time_ms: 7200 },
+    { student_name: '척척누르미', table_number: 3, mode: 'reverse', score: 90, total_time_ms: 9800 },
   ],
 };
 
@@ -29,6 +30,7 @@ export default function RankingScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'all' | number>('all');
   const [selectedPracticeType, setSelectedPracticeType] = useState<PracticeType>('speech');
+  const modeLabel = (mode: RankingRecord['mode']) => ({ sequential: '순서대로', reverse: '거꾸로', random: '섞어서' })[mode];
 
   useEffect(() => {
     const fetchRanking = async () => {
@@ -150,8 +152,9 @@ export default function RankingScreen() {
                         {res.student_name}
                         {idx === 0 && <Star size={16} fill="currentColor" className="text-amber-500" />}
                       </div>
-                      <div className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-md">
-                        {res.table_number}단
+                      <div className="mt-1 flex gap-1">
+                        <span className="inline-block rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{res.table_number}단</span>
+                        <span className="inline-block rounded-md bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-700">{modeLabel(res.mode)}</span>
                       </div>
                     </div>
                   </div>

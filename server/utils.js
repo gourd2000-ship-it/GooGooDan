@@ -152,7 +152,7 @@ function validateAudioFile(file) {
 
 function calculateScore(totalCorrect, mode) {
   if (mode === 'reverse') return totalCorrect * 12;
-  if (mode === 'random') return totalCorrect * 15;
+  if (mode === 'random') return totalCorrect * 20;
   return totalCorrect * 10;
 }
 
