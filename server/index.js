@@ -9,43 +9,22 @@ const cors = require('cors');
 const multer = require('multer');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Pool } = require('pg');
-const { parseGeminiJson, validateExpectedAnswers, cleanMimeType } = require('./utils');
+const { parseGeminiJson, validateExpectedAnswers, cleanMimeType, getGeminiApiKey } = require('./utils');
 
 const app = express();
 const port = process.env.PORT || 5000;
 
-// 미들웨어 설정 (CORS 제한을 통한 프론트엔드 도메인 보호)
-const allowedOrigins = [
-  'https://goo-goo-dan.vercel.app',
-  'http://localhost:5173',
-  'http://localhost:3000'
-];
-app.use(cors({
-  origin: function (origin, callback) {
-    // 모바일 앱이나 curl 등의 요청 허용(origin이 없는 경우)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'CORS 정책에 의해 허용되지 않는 도메인입니다.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  }
-}));
+// 미들웨어 설정 (모든 클라이언트 도메인 요청 및 OPTIONS 허용)
+app.use(cors());
 app.use(express.json());
 
 // 멀터(Multer) 설정 - 음성 파일을 메모리에 임시 저장 (Gemini로 바로 보내기 위함)
 const upload = multer({ storage: multer.memoryStorage() });
 
-function getGenAIClient() {
-  const apiKey = (
-    process.env.GEMINI_API_KEY || 
-    process.env['GEMINI-API-KEY'] || 
-    process.env.GEMINI_KEY || 
-    process.env.VITE_GEMINI_API_KEY ||
-    process.env.API_KEY ||
-    ''
-  ).trim();
+const DATABASE_URL = process.env.DATABASE_URL;
 
+function getGenAIClient() {
+  const apiKey = getGeminiApiKey();
   if (!apiKey) return null;
   return new GoogleGenerativeAI(apiKey);
 }
@@ -248,8 +227,14 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     res.json(evaluation);
   } catch (error) {
     console.error('채점 중 오류 발생:', error);
-    res.status(500).json({ error: 'AI 채점 중 문제가 발생했습니다.' });
+    res.status(500).json({ error: `AI 채점 중 문제가 발생했습니다: ${error.message || error}` });
   }
+});
+
+// 전역 500 에러 처리 미들웨어 (HTML 에러 반환 방지)
+app.use((err, req, res, next) => {
+  console.error('❌ 서버 전역 예외 발생:', err.stack || err);
+  res.status(500).json({ error: `서버 내부 오류: ${err.message || err}` });
 });
 
 // 서버 실행

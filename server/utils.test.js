@@ -46,3 +46,10 @@ test('parseGeminiJson: results 필드가 누락된 잘못된 구조 수신 시 �
   assert.ok(Array.isArray(result.results));
   assert.strictEqual(result.totalCorrect, 0);
 });
+
+test('getGeminiApiKey: 환경변수 또는 fallback 키를 정상 추출해야 함', () => {
+  const { getGeminiApiKey } = require('./utils');
+  const key = getGeminiApiKey();
+  assert.ok(typeof key === 'string');
+  assert.ok(key.length > 0);
+});

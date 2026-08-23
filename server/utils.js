@@ -84,8 +84,29 @@ function cleanMimeType(rawMimeType) {
   return baseMime || 'audio/webm';
 }
 
+/**
+ * 환경 변수 또는 안전 fallback 키에서 Gemini API Key를 추출합니다.
+ * @returns {string}
+ */
+function getGeminiApiKey() {
+  const envKey = (
+    process.env.GEMINI_API_KEY || 
+    process.env['GEMINI-API-KEY'] || 
+    process.env.GEMINI_KEY || 
+    process.env.VITE_GEMINI_API_KEY ||
+    process.env.API_KEY ||
+    ''
+  ).trim();
+
+  if (envKey) return envKey;
+
+  // 프로젝트 기본 안전 키
+  return 'AIzaSyA_G1im7G03vtpOhvVhLWKnEhT6jRpW7KY';
+}
+
 module.exports = {
   parseGeminiJson,
   validateExpectedAnswers,
-  cleanMimeType
+  cleanMimeType,
+  getGeminiApiKey
 };
