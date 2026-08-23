@@ -103,10 +103,17 @@ export default function PracticeScreen() {
         body: formData,
       });
       
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // Not JSON
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || `서버 응답 실패 (HTTP ${res.status})`);
+        const errorDetail = data.error || rawText || `서버 응답 실패 (HTTP ${res.status})`;
+        throw new Error(errorDetail);
       }
       
       setEvaluationResult(data);

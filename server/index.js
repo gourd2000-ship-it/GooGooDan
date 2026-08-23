@@ -36,18 +36,19 @@ app.use(express.json());
 // 멀터(Multer) 설정 - 음성 파일을 메모리에 임시 저장 (Gemini로 바로 보내기 위함)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 환경변수에서 키 가져오기 (언더바와 하이픈 형식을 모두 지원)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env['GEMINI-API-KEY'];
-const DATABASE_URL = process.env.DATABASE_URL;
+function getGenAIClient() {
+  const apiKey = (
+    process.env.GEMINI_API_KEY || 
+    process.env['GEMINI-API-KEY'] || 
+    process.env.GEMINI_KEY || 
+    process.env.VITE_GEMINI_API_KEY ||
+    process.env.API_KEY ||
+    ''
+  ).trim();
 
-if (!GEMINI_API_KEY) {
-  console.error('❌ 에러: GEMINI_API_KEY가 설정되지 않았습니다. .env 파일을 확인해 주세요.');
-} else {
-  console.log('✅ Gemini API Key 로드 성공');
+  if (!apiKey) return null;
+  return new GoogleGenerativeAI(apiKey);
 }
-
-// API 연동 초기화
-const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 // Neon DB Pool 초기화
 let pool = null;
@@ -144,9 +145,10 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
 
     console.log(`[채점 요청] 사용자: ${cleanName}, ${parsedTable}단, 파일크기: ${req.file.size} bytes, 형식: ${req.file.mimetype}`);
     
+    const genAI = getGenAIClient();
     if (!genAI) {
       console.error('❌ Gemini API 클라이언트가 초기화되지 않았습니다. GEMINI_API_KEY 환경변수를 확인하세요.');
-      return res.status(500).json({ error: '서버의 GEMINI_API_KEY 환경변수가 누락되었습니다.' });
+      return res.status(500).json({ error: '서버의 GEMINI_API_KEY 환경변수가 누락되었습니다. Render 대시보드의 Environment Variables 설정을 확인해주세요.' });
     }
 
     const safeExpectedAnswers = validateExpectedAnswers(expectedAnswers);
