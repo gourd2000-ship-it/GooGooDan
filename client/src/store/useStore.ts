@@ -34,6 +34,7 @@ export type TapRecordStatus = 'idle' | 'saving' | 'saved' | 'error';
 interface AppState {
   currentScreen: ScreenType;
   userName: string;
+  hasVoiceConsent: boolean;
   practiceType: PracticeType;
   tapGameMode: TapGameMode;
   speechTable: number;
@@ -50,6 +51,7 @@ interface AppState {
   totalTime: number;
   setScreen: (screen: ScreenType) => void;
   setUserName: (name: string) => void;
+  setVoiceConsent: (hasConsent: boolean) => void;
   setPracticeType: (type: PracticeType) => void;
   setTapGameMode: (mode: TapGameMode) => void;
   setSpeechTable: (table: number) => void;
@@ -70,6 +72,7 @@ interface AppState {
 export const useStore = create<AppState>((set) => ({
   currentScreen: 'name',
   userName: '',
+  hasVoiceConsent: false,
   practiceType: 'speech',
   tapGameMode: 'answer',
   speechTable: 2,
@@ -86,6 +89,7 @@ export const useStore = create<AppState>((set) => ({
   totalTime: 0,
   setScreen: (screen) => set({ currentScreen: screen }),
   setUserName: (userName) => set({ userName }),
+  setVoiceConsent: (hasVoiceConsent) => set({ hasVoiceConsent }),
   setPracticeType: (practiceType) => set({ practiceType }),
   setTapGameMode: (tapGameMode) => set({ tapGameMode }),
   setSpeechTable: (speechTable) => set({ speechTable }),

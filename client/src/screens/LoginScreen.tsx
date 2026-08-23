@@ -3,12 +3,12 @@ import { useStore } from '../store/useStore';
 import { UserCircle } from 'lucide-react';
 
 export default function LoginScreen() {
-  const { setUserName, setScreen } = useStore();
+  const { hasVoiceConsent, setUserName, setVoiceConsent, setScreen } = useStore();
   const [inputValue, setInputValue] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim()) {
+    if (inputValue.trim() && hasVoiceConsent) {
       setUserName(inputValue.trim());
       setScreen('home');
     }
@@ -33,11 +33,25 @@ export default function LoginScreen() {
             autoFocus
             maxLength={10}
           />
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-amber-100 bg-amber-50 p-4 text-left text-slate-700">
+            <input
+              type="checkbox"
+              aria-label="AI 음성 사용에 동의함"
+              aria-describedby="voice-consent-description"
+              checked={hasVoiceConsent}
+              onChange={(event) => setVoiceConsent(event.target.checked)}
+              className="mt-1 h-5 w-5 accent-amber-500"
+            />
+            <span>
+              <strong className="block">AI 음성 사용에 동의함</strong>
+              <span id="voice-consent-description" className="mt-1 block text-sm text-slate-500">말하는 구구단의 음성 채점을 위해 녹음한 음성이 AI 서비스로 전송될 수 있어요.</span>
+            </span>
+          </label>
           <button
             type="submit"
-            disabled={!inputValue.trim()}
+            disabled={!inputValue.trim() || !hasVoiceConsent}
             className={`w-full font-bold text-2xl py-4 rounded-xl shadow-lg transition-transform ${
-              inputValue.trim() 
+              inputValue.trim() && hasVoiceConsent
                 ? 'bg-amber-500 hover:bg-amber-600 text-white hover:scale-105' 
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
