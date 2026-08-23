@@ -104,9 +104,25 @@ function getGeminiApiKey() {
   return 'AIzaSyA_G1im7G03vtpOhvVhLWKnEhT6jRpW7KY';
 }
 
+/**
+ * 업로드된 오디오 파일 객체의 유효성을 정밀 검증합니다.
+ * @param {object} file - multer req.file 객체
+ * @returns {{ valid: boolean, reason?: string }}
+ */
+function validateAudioFile(file) {
+  if (!file) {
+    return { valid: false, reason: '오디오 파일이 수신되지 않았습니다.' };
+  }
+  if (!file.buffer || !Buffer.isBuffer(file.buffer) || file.size === 0) {
+    return { valid: false, reason: '오디오 파일 내용이 비어 있습니다 (0 bytes).' };
+  }
+  return { valid: true };
+}
+
 module.exports = {
   parseGeminiJson,
   validateExpectedAnswers,
   cleanMimeType,
-  getGeminiApiKey
+  getGeminiApiKey,
+  validateAudioFile
 };

@@ -53,3 +53,10 @@ test('getGeminiApiKey: 환경변수 또는 fallback 키를 정상 추출해야 �
   assert.ok(typeof key === 'string');
   assert.ok(key.length > 0);
 });
+
+test('validateAudioFile: 업로드된 오디오 파일의 유효성을 정밀 검증해야 함', () => {
+  const { validateAudioFile } = require('./utils');
+  assert.strictEqual(validateAudioFile(null).valid, false);
+  assert.strictEqual(validateAudioFile({ size: 0 }).valid, false);
+  assert.strictEqual(validateAudioFile({ size: 500, buffer: Buffer.from('test') }).valid, true);
+});

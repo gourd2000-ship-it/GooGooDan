@@ -9,7 +9,7 @@ const cors = require('cors');
 const multer = require('multer');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Pool } = require('pg');
-const { parseGeminiJson, validateExpectedAnswers, cleanMimeType, getGeminiApiKey } = require('./utils');
+const { parseGeminiJson, validateExpectedAnswers, cleanMimeType, getGeminiApiKey, validateAudioFile } = require('./utils');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -52,6 +52,12 @@ app.get('/', (req, res) => {
   res.send('말하는 구구단 챌린지 서버가 정상 작동 중입니다!');
 });
 
+// 헬스 체크 API
+app.get('/api/health', (req, res) => {
+  const hasKey = !!getGeminiApiKey();
+  res.json({ status: 'ok', hasGeminiKey: hasKey, hasDb: !!pool });
+});
+
 // 랭킹 조회 API (8단계)
 app.get('/api/ranking', async (req, res) => {
   try {
@@ -86,11 +92,18 @@ app.get('/api/ranking', async (req, res) => {
 });
 
 // AI 채점 API (오디오 파일을 받아 Gemini로 평가)
-app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: '오디오 파일이 없습니다.' });
+app.post('/api/evaluate', (req, res) => {
+  upload.single('audio')(req, res, async (uploadErr) => {
+    if (uploadErr) {
+      console.error('❌ 멀터 오디오 수신 에러:', uploadErr);
+      return res.status(400).json({ error: `오디오 업로드 처리 중 오류 발생: ${uploadErr.message}` });
     }
+
+    try {
+      const audioCheck = validateAudioFile(req.file);
+      if (!audioCheck.valid) {
+        return res.status(400).json({ error: audioCheck.reason });
+      }
 
     const { table, mode, expectedAnswers, userName, totalTime } = req.body;
 
@@ -225,10 +238,11 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     }
 
     res.json(evaluation);
-  } catch (error) {
-    console.error('채점 중 오류 발생:', error);
-    res.status(500).json({ error: `AI 채점 중 문제가 발생했습니다: ${error.message || error}` });
-  }
+    } catch (error) {
+      console.error('채점 중 오류 발생:', error);
+      res.status(500).json({ error: `AI 채점 중 문제가 발생했습니다: ${error.message || error}` });
+    }
+  });
 });
 
 // 전역 500 에러 처리 미들웨어 (HTML 에러 반환 방지)
