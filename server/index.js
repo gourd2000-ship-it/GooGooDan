@@ -7,8 +7,8 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.ENV') });
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Pool } = require('pg');
+const { createGeminiClient, evaluateAudio } = require('./gemini');
 const {
   ALLOWED_AUDIO_MIME_TYPES,
   MAX_AUDIO_SIZE_BYTES,
@@ -50,7 +50,7 @@ const DATABASE_URL = process.env.DATABASE_URL;
 function getGenAIClient() {
   const apiKey = getGeminiApiKey();
   if (!apiKey) return null;
-  return new GoogleGenerativeAI(apiKey);
+  return createGeminiClient(apiKey);
 }
 
 // Neon DB Pool 초기화
@@ -205,31 +205,21 @@ app.post('/api/evaluate', (req, res) => {
       }
     };
 
-    // 호환성이 보장된 Gemini 모델 폴백 목록
-    const candidateModels = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
-    let evaluation = null;
-    let lastError = null;
-
-    for (const modelName of candidateModels) {
-      try {
-        console.log(`📡 [Gemini API] 모델 시도 중: ${modelName}`);
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent([prompt, audioPart]);
-        const responseText = result.response.text();
-        console.log(`✅ Gemini API (${modelName}) 응답 수신 성공!`);
-        evaluation = parseGeminiJson(responseText);
-        if (evaluation && evaluation.results && evaluation.results.length > 0) {
-          break;
-        }
-      } catch (err) {
-        console.error(`❌ 모델 ${modelName} 호출 실패:`, err.message || err);
-        lastError = err;
-      }
+    let evaluation;
+    try {
+      const responseText = await evaluateAudio(genAI, {
+        prompt,
+        audioData: audioPart.inlineData.data,
+        mimeType: pureMimeType,
+      });
+      evaluation = parseGeminiJson(responseText);
+    } catch (err) {
+      console.error('❌ Gemini Interactions API 호출 실패:', err.message || err);
+      return res.status(502).json({ error: 'AI 채점 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.' });
     }
 
     if (!evaluation || !evaluation.results || evaluation.results.length === 0) {
-      const errorMsg = lastError?.message || 'Gemini API 호출 또는 음성 분석 실패';
-      console.error('❌ 모든 Gemini 모델 호출 또는 파싱 실패:', errorMsg);
+      console.error('❌ Gemini 응답에서 채점 결과를 찾지 못했습니다.');
       return res.status(502).json({ error: 'AI 채점 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.' });
     }
 
