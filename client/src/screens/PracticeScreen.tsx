@@ -6,6 +6,8 @@ import { API_URL } from '../config';
 export default function PracticeScreen() {
   const { userName, selectedTable, mode, expectedQuestions, setScreen, setEvaluationResult, setTotalTime } = useStore();
   const [time, setTime] = useState(0);
+  const timeRef = useRef(0);
+  const startTimeRef = useRef<number>(0);
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -31,7 +33,9 @@ export default function PracticeScreen() {
     let timer: any;
     if (isRecording) {
       timer = setInterval(() => {
-        setTime((prev) => prev + 100); // 100ms (10배 리렌더링 최적화)
+        const elapsed = Date.now() - startTimeRef.current;
+        timeRef.current = elapsed;
+        setTime(elapsed);
       }, 100);
     }
     return () => clearInterval(timer);
@@ -56,8 +60,10 @@ export default function PracticeScreen() {
         await uploadAudio(audioBlob);
       };
 
-      mediaRecorder.start();
+      startTimeRef.current = Date.now();
+      timeRef.current = 0;
       setTime(0);
+      mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
       alert("마이크 권한을 허용해주세요!");
@@ -66,6 +72,11 @@ export default function PracticeScreen() {
 
   const handleStopRecording = () => {
     setIsRecording(false);
+    if (startTimeRef.current > 0) {
+      const finalTime = Date.now() - startTimeRef.current;
+      timeRef.current = finalTime;
+      setTime(finalTime);
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
@@ -74,13 +85,15 @@ export default function PracticeScreen() {
 
   const uploadAudio = async (blob: Blob) => {
     setScreen('loading');
+    const finalElapsed = timeRef.current > 0 ? timeRef.current : time;
+
     const formData = new FormData();
     formData.append('audio', blob, 'recording.webm');
     formData.append('table', String(selectedTable));
     formData.append('mode', mode);
     formData.append('expectedAnswers', JSON.stringify(expectedQuestions));
     formData.append('userName', userName);
-    formData.append('totalTime', String(time));
+    formData.append('totalTime', String(finalElapsed));
 
     console.log('🔊 채점 요청을 보낼 API 주소:', `${API_URL}/api/evaluate`);
 
@@ -96,7 +109,7 @@ export default function PracticeScreen() {
       
       const data = await res.json();
       setEvaluationResult(data);
-      setTotalTime(time);
+      setTotalTime(finalElapsed);
       setScreen('result');
     } catch (error: any) {
       console.error('❌ 채점 중 에러 발생:', error);

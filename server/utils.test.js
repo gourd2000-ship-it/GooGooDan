@@ -29,3 +29,11 @@ test('validateExpectedAnswers: JSON 문자열 및 배열 데이터를 안전하�
   assert.strictEqual(validated[0], "2 x 1");
   assert.strictEqual(validated[1], "2 x 2");
 });
+
+test('cleanMimeType: 파라미터가 포함된 MIME 타임을 Gemini 지원 표준 포맷으로 정제해야 함', () => {
+  const { cleanMimeType } = require('./utils');
+  assert.strictEqual(cleanMimeType('audio/webm;codecs=opus'), 'audio/webm');
+  assert.strictEqual(cleanMimeType('audio/mp4;codecs=mp4a.40.2'), 'audio/mp4');
+  assert.strictEqual(cleanMimeType('audio/ogg;codecs=vorbis'), 'audio/ogg');
+  assert.strictEqual(cleanMimeType(''), 'audio/webm');
+});

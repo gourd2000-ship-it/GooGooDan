@@ -59,7 +59,21 @@ function validateExpectedAnswers(input) {
     .slice(0, 10);
 }
 
+/**
+ * MIME 타입을 Gemini API가 인식할 수 있는 순수한 오디오 포맷(e.g., audio/webm)으로 정제합니다.
+ * @param {string} rawMimeType 
+ * @returns {string}
+ */
+function cleanMimeType(rawMimeType) {
+  if (!rawMimeType || typeof rawMimeType !== 'string') {
+    return 'audio/webm';
+  }
+  const baseMime = rawMimeType.split(';')[0].trim().toLowerCase();
+  return baseMime || 'audio/webm';
+}
+
 module.exports = {
   parseGeminiJson,
-  validateExpectedAnswers
+  validateExpectedAnswers,
+  cleanMimeType
 };

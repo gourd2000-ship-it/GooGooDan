@@ -9,7 +9,7 @@ const cors = require('cors');
 const multer = require('multer');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Pool } = require('pg');
-const { parseGeminiJson, validateExpectedAnswers } = require('./utils');
+const { parseGeminiJson, validateExpectedAnswers, cleanMimeType } = require('./utils');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -176,11 +176,14 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     }
     `;
 
-    // 오디오 데이터를 Gemini가 이해할 수 있는 형식(Base64)으로 변환
+    // 오디오 데이터를 Gemini가 이해할 수 있는 순수 포맷으로 변환
+    const pureMimeType = cleanMimeType(req.file.mimetype);
+    console.log(`[오디오 정제] 원본 mimeType: "${req.file.mimetype}" ➔ 정제 mimeType: "${pureMimeType}"`);
+
     const audioPart = {
       inlineData: {
         data: req.file.buffer.toString("base64"),
-        mimeType: req.file.mimetype
+        mimeType: pureMimeType
       }
     };
 
@@ -189,9 +192,10 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     try {
       const result = await model.generateContent([prompt, audioPart]);
       const responseText = result.response.text();
+      console.log('✅ Gemini API 응답 수신 완료');
       evaluation = parseGeminiJson(responseText);
     } catch (parseError) {
-      console.error('Gemini 응답 또는 처리 실패:', parseError);
+      console.error('❌ Gemini API 호출 또는 처리 중 에러 발생:', parseError.message || parseError);
       evaluation = {
         results: [],
         totalCorrect: 0,
