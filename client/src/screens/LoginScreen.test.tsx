@@ -13,6 +13,8 @@ describe('LoginScreen', () => {
   it('requires AI voice-use consent before allowing the child to start', () => {
     render(<LoginScreen />);
 
+    expect(screen.getByText('도전! 구구단')).toBeInTheDocument();
+
     fireEvent.change(screen.getByPlaceholderText('이름 입력하기...'), { target: { value: '구구' } });
     expect(screen.getByRole('button', { name: '시작하기!' })).toBeDisabled();
 

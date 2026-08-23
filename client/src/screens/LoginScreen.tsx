@@ -17,6 +17,7 @@ export default function LoginScreen() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-4">
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md text-center border-4 border-amber-100">
+        <p className="mb-4 text-2xl font-black text-amber-500">도전! 구구단</p>
         <div className="flex justify-center mb-6 text-amber-500">
           <UserCircle size={80} />
         </div>
