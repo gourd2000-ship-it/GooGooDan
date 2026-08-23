@@ -1,5 +1,5 @@
 
-import { useStore, EvaluationItem } from '../store/useStore';
+import { useStore, type EvaluationItem } from '../store/useStore';
 import { RotateCcw } from 'lucide-react';
 
 export default function ResultScreen() {
@@ -15,6 +15,8 @@ export default function ResultScreen() {
   };
   
   const score = getScore();
+  const correct = evaluationResult?.totalCorrect || 0;
+  const accuracy = Math.round((correct / 10) * 100);
   const feedback = evaluationResult?.feedback || "참 잘했어요!";
 
   return (
@@ -23,7 +25,7 @@ export default function ResultScreen() {
         <h1 className="text-4xl font-black text-center text-green-600 mb-2">결과 확인</h1>
         <p className="text-center text-slate-500 mb-8 font-medium whitespace-pre-wrap">{feedback}</p>
 
-        <div className="grid grid-cols-2 gap-4 mb-8 text-center">
+        <div className="grid grid-cols-3 gap-4 mb-8 text-center">
           <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100">
             <div className="text-slate-500 font-bold mb-1">소요 시간</div>
             <div className="text-3xl font-black text-slate-800 font-mono">{(totalTime / 1000).toFixed(2)}초</div>
@@ -31,6 +33,10 @@ export default function ResultScreen() {
           <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100">
             <div className="text-slate-500 font-bold mb-1">점수</div>
             <div className="text-3xl font-black text-blue-600">{score}점</div>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100">
+            <div className="text-slate-500 font-bold mb-1">정답률</div>
+            <div className="text-3xl font-black text-green-600">{accuracy}%</div>
           </div>
         </div>
 

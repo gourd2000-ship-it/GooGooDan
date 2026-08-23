@@ -1,6 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { parseGeminiJson, validateExpectedAnswers } = require('./utils');
+const {
+  parseGeminiJson,
+  validateExpectedAnswers,
+  validateExpectedQuestions,
+  normalizeEvaluation,
+  getGeminiApiKey,
+  validateAudioFile,
+  MAX_AUDIO_SIZE_BYTES,
+} = require('./utils');
 
 test('parseGeminiJson: 마크다운 코드 블록이 포함되어 있어도 정상 파싱되어야 함', () => {
   const input = "```json\n{\n  \"results\": [\n    { \"question\": \"2 x 1\", \"expected\": \"2\", \"spoken\": \"이\", \"isCorrect\": true }\n  ],\n  \"totalCorrect\": 1,\n  \"feedback\": \"참 잘했어요!\"\n}\n```";
@@ -47,16 +55,44 @@ test('parseGeminiJson: results 필드가 누락된 잘못된 구조 수신 시 �
   assert.strictEqual(result.totalCorrect, 0);
 });
 
-test('getGeminiApiKey: 환경변수 또는 fallback 키를 정상 추출해야 함', () => {
-  const { getGeminiApiKey } = require('./utils');
-  const key = getGeminiApiKey();
-  assert.ok(typeof key === 'string');
-  assert.ok(key.length > 0);
+test('getGeminiApiKey: GEMINI_API_KEY만 허용하고 클라이언트용 VITE 키 및 fallback은 무시해야 함', () => {
+  assert.strictEqual(getGeminiApiKey({ GEMINI_API_KEY: '  server-key  ' }), 'server-key');
+  assert.strictEqual(getGeminiApiKey({ VITE_GEMINI_API_KEY: 'public-key' }), '');
+  assert.strictEqual(getGeminiApiKey({}), '');
 });
 
-test('validateAudioFile: 업로드된 오디오 파일의 유효성을 정밀 검증해야 함', () => {
-  const { validateAudioFile } = require('./utils');
+test('validateExpectedQuestions: 선택한 단과 모드에 맞는 정확히 10개 문제만 허용해야 함', () => {
+  const sequential = JSON.stringify(Array.from({ length: 10 }, (_, index) => `3 x ${index + 1}`));
+  assert.deepStrictEqual(validateExpectedQuestions(3, 'sequential', sequential), JSON.parse(sequential));
+  assert.strictEqual(validateExpectedQuestions(3, 'sequential', JSON.stringify(['3 x 1'])), null);
+  assert.strictEqual(validateExpectedQuestions(3, 'sequential', JSON.stringify([...JSON.parse(sequential), '3 x 11'])), null);
+  assert.strictEqual(validateExpectedQuestions(3, 'sequential', JSON.stringify(['4 x 1', '3 x 2', '3 x 3', '3 x 4', '3 x 5', '3 x 6', '3 x 7', '3 x 8', '3 x 9', '3 x 10'])), null);
+});
+
+test('validateExpectedQuestions: 랜덤 모드는 선택한 단의 1~10을 중복 없이 포함해야 함', () => {
+  const random = JSON.stringify(['8 x 4', '8 x 1', '8 x 10', '8 x 2', '8 x 5', '8 x 8', '8 x 3', '8 x 6', '8 x 9', '8 x 7']);
+  assert.ok(validateExpectedQuestions(8, 'random', random));
+  assert.strictEqual(validateExpectedQuestions(8, 'random', JSON.stringify(['8 x 1', '8 x 1', '8 x 2', '8 x 3', '8 x 4', '8 x 5', '8 x 6', '8 x 7', '8 x 8', '8 x 9'])), null);
+});
+
+test('normalizeEvaluation: AI가 누락하거나 부정확한 문제·총점을 보내도 10문제와 서버 계산 정답 수를 반환해야 함', () => {
+  const questions = Array.from({ length: 10 }, (_, index) => `4 x ${index + 1}`);
+  const normalized = normalizeEvaluation({
+    results: [{ question: '9 x 9', expected: '81', spoken: '4', isCorrect: true }],
+    totalCorrect: 999,
+    feedback: '잘했어요!',
+  }, questions);
+
+  assert.strictEqual(normalized.results.length, 10);
+  assert.deepStrictEqual(normalized.results[0], { question: '4 x 1', expected: '4', spoken: '4', isCorrect: true });
+  assert.deepStrictEqual(normalized.results[1], { question: '4 x 2', expected: '8', spoken: '', isCorrect: false });
+  assert.strictEqual(normalized.totalCorrect, 1);
+});
+
+test('validateAudioFile: 오디오 형식과 파일 크기를 모두 제한해야 함', () => {
   assert.strictEqual(validateAudioFile(null).valid, false);
   assert.strictEqual(validateAudioFile({ size: 0 }).valid, false);
-  assert.strictEqual(validateAudioFile({ size: 500, buffer: Buffer.from('test') }).valid, true);
+  assert.strictEqual(validateAudioFile({ size: 500, buffer: Buffer.from('test'), mimetype: 'audio/webm; codecs=opus' }).valid, true);
+  assert.strictEqual(validateAudioFile({ size: 500, buffer: Buffer.from('test'), mimetype: 'text/plain' }).valid, false);
+  assert.strictEqual(validateAudioFile({ size: MAX_AUDIO_SIZE_BYTES + 1, buffer: Buffer.from('test'), mimetype: 'audio/webm' }).valid, false);
 });

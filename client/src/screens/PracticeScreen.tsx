@@ -1,7 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import type { EvaluationResult } from '../store/useStore';
 import { Mic, Square, ChevronDown } from 'lucide-react';
 import { API_URL } from '../config';
+
+const getCurrentTime = () => Date.now();
+
+function getApiErrorMessage(value: unknown, fallback: string) {
+  if (value && typeof value === 'object' && 'error' in value && typeof value.error === 'string') {
+    return value.error;
+  }
+  return fallback;
+}
+
+function isEvaluationResult(value: unknown): value is EvaluationResult {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<EvaluationResult>;
+  return Array.isArray(candidate.results)
+    && typeof candidate.totalCorrect === 'number'
+    && typeof candidate.feedback === 'string';
+}
 
 export default function PracticeScreen() {
   const { userName, selectedTable, mode, expectedQuestions, setScreen, setEvaluationResult, setTotalTime } = useStore();
@@ -30,15 +48,17 @@ export default function PracticeScreen() {
   }, []);
 
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setInterval> | undefined;
     if (isRecording) {
       timer = setInterval(() => {
-        const elapsed = Date.now() - startTimeRef.current;
+        const elapsed = getCurrentTime() - startTimeRef.current;
         timeRef.current = elapsed;
         setTime(elapsed);
       }, 100);
     }
-    return () => clearInterval(timer);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [isRecording]);
 
   const handleStartRecording = async () => {
@@ -60,12 +80,12 @@ export default function PracticeScreen() {
         await uploadAudio(audioBlob);
       };
 
-      startTimeRef.current = Date.now();
+      startTimeRef.current = getCurrentTime();
       timeRef.current = 0;
       setTime(0);
       mediaRecorder.start();
       setIsRecording(true);
-    } catch (err) {
+    } catch {
       alert("마이크 권한을 허용해주세요!");
     }
   };
@@ -73,7 +93,7 @@ export default function PracticeScreen() {
   const handleStopRecording = () => {
     setIsRecording(false);
     if (startTimeRef.current > 0) {
-      const finalTime = Date.now() - startTimeRef.current;
+      const finalTime = getCurrentTime() - startTimeRef.current;
       timeRef.current = finalTime;
       setTime(finalTime);
     }
@@ -104,24 +124,28 @@ export default function PracticeScreen() {
       });
       
       const rawText = await res.text();
-      let data: any = {};
+      let data: unknown;
       try {
         data = JSON.parse(rawText);
       } catch {
-        // Not JSON
+        data = undefined;
       }
 
       if (!res.ok) {
-        const errorDetail = data.error || rawText || `서버 응답 실패 (HTTP ${res.status})`;
+        const errorDetail = getApiErrorMessage(data, rawText || `서버 응답 실패 (HTTP ${res.status})`);
         throw new Error(errorDetail);
+      }
+      if (!isEvaluationResult(data)) {
+        throw new Error('채점 결과 형식이 올바르지 않습니다.');
       }
       
       setEvaluationResult(data);
       setTotalTime(finalElapsed);
       setScreen('result');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
       console.error('❌ 채점 중 에러 발생:', error);
-      alert(`채점 중 오류가 발생했습니다.\n상세 사유: ${error.message || error}`);
+      alert(`채점 중 오류가 발생했습니다.\n상세 사유: ${errorMessage}`);
       setScreen('home');
     }
   };

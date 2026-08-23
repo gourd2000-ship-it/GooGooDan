@@ -9,17 +9,35 @@ const cors = require('cors');
 const multer = require('multer');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Pool } = require('pg');
-const { parseGeminiJson, validateExpectedAnswers, cleanMimeType, getGeminiApiKey, validateAudioFile } = require('./utils');
+const {
+  ALLOWED_AUDIO_MIME_TYPES,
+  MAX_AUDIO_SIZE_BYTES,
+  cleanMimeType,
+  getGeminiApiKey,
+  normalizeEvaluation,
+  parseGeminiJson,
+  validateAudioFile,
+  validateExpectedQuestions,
+} = require('./utils');
 
 const app = express();
 const port = process.env.PORT || 5000;
 
-// 미들웨어 설정 (모든 클라이언트 도메인 요청 및 OPTIONS 허용)
-app.use(cors());
+const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+app.use(cors({ origin: clientOrigin, methods: ['GET', 'POST'] }));
 app.use(express.json());
 
-// 멀터(Multer) 설정 - 음성 파일을 메모리에 임시 저장 (Gemini로 바로 보내기 위함)
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_AUDIO_SIZE_BYTES, files: 1 },
+  fileFilter: (req, file, callback) => {
+    if (ALLOWED_AUDIO_MIME_TYPES.has(cleanMimeType(file.mimetype))) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('지원하지 않는 오디오 형식입니다.'));
+  },
+});
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
@@ -96,7 +114,7 @@ app.post('/api/evaluate', (req, res) => {
   upload.single('audio')(req, res, async (uploadErr) => {
     if (uploadErr) {
       console.error('❌ 멀터 오디오 수신 에러:', uploadErr);
-      return res.status(400).json({ error: `오디오 업로드 처리 중 오류 발생: ${uploadErr.message}` });
+      return res.status(400).json({ error: '오디오 업로드를 처리하지 못했습니다. 파일 크기와 형식을 확인해 주세요.' });
     }
 
     try {
@@ -108,8 +126,8 @@ app.post('/api/evaluate', (req, res) => {
     const { table, mode, expectedAnswers, userName, totalTime } = req.body;
 
     // 입력값 검증 (보안 강화 및 SQL injection/XSS 사전 예방)
-    const parsedTable = parseInt(table);
-    if (isNaN(parsedTable) || parsedTable < 2 || parsedTable > 9) {
+    const parsedTable = Number(table);
+    if (!Number.isInteger(parsedTable) || parsedTable < 2 || parsedTable > 9) {
       return res.status(400).json({ error: '유효하지 않은 단 선택입니다. (2~9단만 가능)' });
     }
 
@@ -125,14 +143,14 @@ app.post('/api/evaluate', (req, res) => {
       return res.status(400).json({ error: '이름은 특수문자 없이 1~10자 이내로 입력해주세요.' });
     }
 
-    const parsedTotalTime = parseInt(totalTime);
-    if (isNaN(parsedTotalTime) || parsedTotalTime < 0) {
+    const parsedTotalTime = Number(totalTime);
+    if (!Number.isInteger(parsedTotalTime) || parsedTotalTime < 0) {
       return res.status(400).json({ error: '유효하지 않은 소요 시간입니다.' });
     }
 
-    if (!req.file || !req.file.buffer || req.file.size === 0) {
-      console.warn('⚠️ 전송된 오디오 파일이 비어 있습니다 (0 bytes).');
-      return res.status(400).json({ error: '녹음된 오디오가 비어 있습니다. 마이크 권한을 확인하고 다시 녹음해 주세요.' });
+    const safeExpectedAnswers = validateExpectedQuestions(parsedTable, mode, expectedAnswers);
+    if (!safeExpectedAnswers) {
+      return res.status(400).json({ error: '선택한 단과 연습 모드에 맞는 10개 문제가 필요합니다.' });
     }
 
     console.log(`[채점 요청] 사용자: ${cleanName}, ${parsedTable}단, 파일크기: ${req.file.size} bytes, 형식: ${req.file.mimetype}`);
@@ -142,8 +160,6 @@ app.post('/api/evaluate', (req, res) => {
       console.error('❌ Gemini API 클라이언트가 초기화되지 않았습니다. GEMINI_API_KEY 환경변수를 확인하세요.');
       return res.status(500).json({ error: '서버의 GEMINI_API_KEY 환경변수가 누락되었습니다. Render 대시보드의 Environment Variables 설정을 확인해주세요.' });
     }
-
-    const safeExpectedAnswers = validateExpectedAnswers(expectedAnswers);
 
     // 프롬프트(명령어) 작성
     const prompt = `
@@ -208,14 +224,14 @@ app.post('/api/evaluate', (req, res) => {
     if (!evaluation || !evaluation.results || evaluation.results.length === 0) {
       const errorMsg = lastError?.message || 'Gemini API 호출 또는 음성 분석 실패';
       console.error('❌ 모든 Gemini 모델 호출 또는 파싱 실패:', errorMsg);
-      return res.status(500).json({ 
-        error: `AI 채점 오류: ${errorMsg}` 
-      });
+      return res.status(502).json({ error: 'AI 채점 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.' });
     }
 
+    const normalizedEvaluation = normalizeEvaluation(evaluation, safeExpectedAnswers);
+
     // Neon DB 기록 저장
-    if (pool && cleanName && evaluation.totalCorrect !== undefined) {
-      const correct = evaluation.totalCorrect || 0;
+    if (pool && cleanName) {
+      const correct = normalizedEvaluation.totalCorrect;
       let score = 0;
       if (mode === 'reverse') {
         score = correct * 12;
@@ -237,10 +253,10 @@ app.post('/api/evaluate', (req, res) => {
       }
     }
 
-    res.json(evaluation);
+    res.json(normalizedEvaluation);
     } catch (error) {
       console.error('채점 중 오류 발생:', error);
-      res.status(500).json({ error: `AI 채점 중 문제가 발생했습니다: ${error.message || error}` });
+      res.status(500).json({ error: '채점 중 서버 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.' });
     }
   });
 });
@@ -248,7 +264,7 @@ app.post('/api/evaluate', (req, res) => {
 // 전역 500 에러 처리 미들웨어 (HTML 에러 반환 방지)
 app.use((err, req, res, next) => {
   console.error('❌ 서버 전역 예외 발생:', err.stack || err);
-  res.status(500).json({ error: `서버 내부 오류: ${err.message || err}` });
+  res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
 });
 
 // 서버 실행
