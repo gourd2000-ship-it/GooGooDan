@@ -14,6 +14,7 @@ describe('LoginScreen', () => {
     render(<LoginScreen />);
 
     expect(screen.getByText('도전! 구구단')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '안녕! 네 이름은 뭐야?' })).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('이름 입력하기...'), { target: { value: '구구' } });
     expect(screen.getByRole('button', { name: '시작하기!' })).toBeDisabled();

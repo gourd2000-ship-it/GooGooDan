@@ -17,11 +17,11 @@ export default function LoginScreen() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-4">
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md text-center border-4 border-amber-100">
-        <p className="mb-4 text-2xl font-black text-amber-500">도전! 구구단</p>
+        <p className="mb-4 text-3xl font-black text-amber-500">도전! 구구단</p>
         <div className="flex justify-center mb-6 text-amber-500">
           <UserCircle size={80} />
         </div>
-        <h1 className="text-3xl font-black text-slate-800 mb-2">안녕! 내 이름은 뭘까?</h1>
+        <h1 className="text-3xl font-black text-slate-800 mb-2">안녕! 네 이름은 뭐야?</h1>
         <p className="text-slate-500 mb-8">친구의 멋진 이름이나 별명을 적어주세요!</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
