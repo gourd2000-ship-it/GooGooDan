@@ -137,15 +137,17 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
       return res.status(400).json({ error: '유효하지 않은 소요 시간입니다.' });
     }
 
+    if (!req.file || !req.file.buffer || req.file.size === 0) {
+      console.warn('⚠️ 전송된 오디오 파일이 비어 있습니다 (0 bytes).');
+      return res.status(400).json({ error: '녹음된 오디오가 비어 있습니다. 마이크 권한을 확인하고 다시 녹음해 주세요.' });
+    }
+
     console.log(`[채점 요청] 사용자: ${cleanName}, ${parsedTable}단, 파일크기: ${req.file.size} bytes, 형식: ${req.file.mimetype}`);
     
     if (!genAI) {
-      console.error('❌ Gemini API 클라이언트가 초기화되지 않았습니다.');
+      console.error('❌ Gemini API 클라이언트가 초기화되지 않았습니다. GEMINI_API_KEY 환경변수를 확인하세요.');
       return res.status(500).json({ error: '서버의 GEMINI_API_KEY 환경변수가 누락되었습니다.' });
     }
-
-    // Gemini 모델 설정 (비용을 극대화하여 아낄 수 있는 최신 2.0 flash-lite 모델 적용)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     const safeExpectedAnswers = validateExpectedAnswers(expectedAnswers);
 
@@ -187,19 +189,43 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
       }
     };
 
-    // Gemini에게 채점 요청
-    let evaluation;
-    try {
-      const result = await model.generateContent([prompt, audioPart]);
-      const responseText = result.response.text();
-      console.log('✅ Gemini API 응답 수신 완료');
-      evaluation = parseGeminiJson(responseText);
-    } catch (parseError) {
-      console.error('❌ Gemini API 호출 또는 처리 중 에러 발생:', parseError.message || parseError);
+    // 호환성이 보장된 Gemini 모델 폴백 목록
+    const candidateModels = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
+    let evaluation = null;
+    let lastError = null;
+
+    for (const modelName of candidateModels) {
+      try {
+        console.log(`📡 [Gemini API] 모델 시도 중: ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent([prompt, audioPart]);
+        const responseText = result.response.text();
+        console.log(`✅ Gemini API (${modelName}) 응답 수신 성공!`);
+        evaluation = parseGeminiJson(responseText);
+        if (evaluation && evaluation.results && evaluation.results.length > 0) {
+          break;
+        }
+      } catch (err) {
+        console.error(`❌ 모델 ${modelName} 호출 실패:`, err.message || err);
+        lastError = err;
+      }
+    }
+
+    if (!evaluation || !evaluation.results || evaluation.results.length === 0) {
+      console.error('❌ 모든 Gemini 모델 호출 또는 파싱 실패:', lastError?.message || lastError);
       evaluation = {
-        results: [],
+        results: safeExpectedAnswers.map(q => {
+          const parts = q.split('x').map(n => parseInt(n.trim()));
+          const expectedVal = parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]) ? String(parts[0] * parts[1]) : '';
+          return {
+            question: q,
+            expected: expectedVal,
+            spoken: "음성 인식 실패",
+            isCorrect: false
+          };
+        }),
         totalCorrect: 0,
-        feedback: "음성이 명확하지 않거나 들리지 않아요. 다시 한 번 큰 소리로 말씀해 주시겠어요?"
+        feedback: "음성 인식 또는 AI 채점 처리 중 문제가 발생했습니다. 마이크 가까이에서 큰 소리로 말씀해 주세요!"
       };
     }
 

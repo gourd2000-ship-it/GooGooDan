@@ -4,18 +4,20 @@
  * @returns {object} 파싱된 결과 객체
  */
 function parseGeminiJson(responseText) {
+  const fallback = {
+    results: [],
+    totalCorrect: 0,
+    feedback: "음성이 명확하지 않거나 들리지 않아요. 다시 한 번 큰 소리로 말씀해 주시겠어요?"
+  };
+
   if (!responseText || typeof responseText !== 'string') {
-    return {
-      results: [],
-      totalCorrect: 0,
-      feedback: "응답을 처리할 수 없습니다."
-    };
+    return fallback;
   }
 
   // 1. 마크다운 코드블록 제거
   let cleanText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-  // 2. 혹시 앞뒤에 일반 텍스트가 섞여있을 경우 가장 처음 나오는 '{' 와 가장 마지막 '}' 추출
+  // 2. 가장 처음 나오는 '{' 와 가장 마지막 '}' 추출
   const startIdx = cleanText.indexOf('{');
   const endIdx = cleanText.lastIndexOf('}');
   if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
@@ -23,14 +25,23 @@ function parseGeminiJson(responseText) {
   }
 
   try {
-    return JSON.parse(cleanText);
+    const parsed = JSON.parse(cleanText);
+    const results = Array.isArray(parsed.results) ? parsed.results : [];
+    const totalCorrect = typeof parsed.totalCorrect === 'number' 
+      ? parsed.totalCorrect 
+      : results.filter(r => r.isCorrect).length;
+    const feedback = typeof parsed.feedback === 'string' && parsed.feedback.trim()
+      ? parsed.feedback 
+      : fallback.feedback;
+
+    return {
+      results,
+      totalCorrect,
+      feedback
+    };
   } catch (err) {
     console.error('Gemini JSON 파싱 오류:', err.message);
-    return {
-      results: [],
-      totalCorrect: 0,
-      feedback: "음성이 명확하지 않거나 들리지 않아요. 다시 한 번 큰 소리로 말씀해 주시겠어요?"
-    };
+    return fallback;
   }
 }
 

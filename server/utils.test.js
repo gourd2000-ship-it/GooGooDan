@@ -37,3 +37,10 @@ test('cleanMimeType: 파라미터가 포함된 MIME 타임을 Gemini 지원 표�
   assert.strictEqual(cleanMimeType('audio/ogg;codecs=vorbis'), 'audio/ogg');
   assert.strictEqual(cleanMimeType(''), 'audio/webm');
 });
+
+test('parseGeminiJson: results 필드가 누락된 잘못된 구조 수신 시 안전하게 기본 규격으로 보정되어야 함', () => {
+  const input = JSON.stringify({ message: "잘 안 들려요" });
+  const result = parseGeminiJson(input);
+  assert.ok(Array.isArray(result.results));
+  assert.strictEqual(result.totalCorrect, 0);
+});
