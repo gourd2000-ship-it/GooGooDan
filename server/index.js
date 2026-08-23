@@ -212,21 +212,11 @@ app.post('/api/evaluate', upload.single('audio'), async (req, res) => {
     }
 
     if (!evaluation || !evaluation.results || evaluation.results.length === 0) {
-      console.error('❌ 모든 Gemini 모델 호출 또는 파싱 실패:', lastError?.message || lastError);
-      evaluation = {
-        results: safeExpectedAnswers.map(q => {
-          const parts = q.split('x').map(n => parseInt(n.trim()));
-          const expectedVal = parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]) ? String(parts[0] * parts[1]) : '';
-          return {
-            question: q,
-            expected: expectedVal,
-            spoken: "음성 인식 실패",
-            isCorrect: false
-          };
-        }),
-        totalCorrect: 0,
-        feedback: "음성 인식 또는 AI 채점 처리 중 문제가 발생했습니다. 마이크 가까이에서 큰 소리로 말씀해 주세요!"
-      };
+      const errorMsg = lastError?.message || 'Gemini API 호출 또는 음성 분석 실패';
+      console.error('❌ 모든 Gemini 모델 호출 또는 파싱 실패:', errorMsg);
+      return res.status(500).json({ 
+        error: `AI 채점 오류: ${errorMsg}` 
+      });
     }
 
     // Neon DB 기록 저장

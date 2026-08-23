@@ -103,17 +103,18 @@ export default function PracticeScreen() {
         body: formData,
       });
       
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error(`서버 응답 실패 (HTTP ${res.status})`);
+        throw new Error(data.error || `서버 응답 실패 (HTTP ${res.status})`);
       }
       
-      const data = await res.json();
       setEvaluationResult(data);
       setTotalTime(finalElapsed);
       setScreen('result');
     } catch (error: any) {
       console.error('❌ 채점 중 에러 발생:', error);
-      alert(`채점 중 오류가 발생했습니다.\n상세 에러: ${error.message || error}`);
+      alert(`채점 중 오류가 발생했습니다.\n상세 사유: ${error.message || error}`);
       setScreen('home');
     }
   };

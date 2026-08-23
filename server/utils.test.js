@@ -22,12 +22,14 @@ test('parseGeminiJson: 코드 블록 앞뒤로 추가 텍스트가 섞여 있어
   assert.strictEqual(result.feedback, "다시 말해볼까요?");
 });
 
-test('validateExpectedAnswers: JSON 문자열 및 배열 데이터를 안전하게 배열로 변환하고 필터링해야 함', () => {
-  const rawInput = JSON.stringify(["2 x 1", "2 x 2", "invalid<script>"]);
+test('validateExpectedAnswers: 다양한 구구단 곱하기 표현(x, X, *) 및 공백 형태를 유연하게 지원해야 함', () => {
+  const rawInput = JSON.stringify(["2 x 1", "2x2", "3 X 4", "5 * 6", "invalid<script>"]);
   const validated = validateExpectedAnswers(rawInput);
-  assert.strictEqual(validated.length, 2);
+  assert.strictEqual(validated.length, 4);
   assert.strictEqual(validated[0], "2 x 1");
   assert.strictEqual(validated[1], "2 x 2");
+  assert.strictEqual(validated[2], "3 x 4");
+  assert.strictEqual(validated[3], "5 x 6");
 });
 
 test('cleanMimeType: 파라미터가 포함된 MIME 타임을 Gemini 지원 표준 포맷으로 정제해야 함', () => {

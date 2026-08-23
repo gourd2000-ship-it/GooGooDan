@@ -62,11 +62,12 @@ function validateExpectedAnswers(input) {
 
   if (!Array.isArray(list)) return [];
 
-  // 안전한 질문 패턴만 추출 (예: "2 x 1", "9 x 10")
+  // 안전한 질문 패턴만 추출 및 'N x M' 표준 규격으로 정제 (예: "2 x 1", "2x1", "2*1" 지원)
   return list
     .filter(item => typeof item === 'string')
     .map(item => item.trim())
-    .filter(item => /^\d+\s*x\s*\d+$/.test(item))
+    .filter(item => /^\d+\s*[xX*]\s*\d+$/.test(item))
+    .map(item => item.replace(/\s*[xX*]\s*/, ' x '))
     .slice(0, 10);
 }
 
