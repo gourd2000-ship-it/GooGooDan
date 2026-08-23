@@ -16,7 +16,7 @@ describe('LoginScreen', () => {
     fireEvent.change(screen.getByPlaceholderText('이름 입력하기...'), { target: { value: '구구' } });
     expect(screen.getByRole('button', { name: '시작하기!' })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'AI 음성 사용에 동의함' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '말하는 구구단 음성 채점을 위한 AI서비스 전송을 동의합니다' }));
     expect(screen.getByRole('button', { name: '시작하기!' })).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: '시작하기!' }));

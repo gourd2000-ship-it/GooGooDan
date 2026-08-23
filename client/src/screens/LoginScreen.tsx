@@ -33,19 +33,15 @@ export default function LoginScreen() {
             autoFocus
             maxLength={10}
           />
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-amber-100 bg-amber-50 p-4 text-left text-slate-700">
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-amber-100 bg-amber-50 p-4 text-left text-slate-700">
             <input
               type="checkbox"
-              aria-label="AI 음성 사용에 동의함"
-              aria-describedby="voice-consent-description"
+              aria-label="말하는 구구단 음성 채점을 위한 AI서비스 전송을 동의합니다"
               checked={hasVoiceConsent}
               onChange={(event) => setVoiceConsent(event.target.checked)}
               className="mt-1 h-5 w-5 accent-amber-500"
             />
-            <span>
-              <strong className="block">AI 음성 사용에 동의함</strong>
-              <span id="voice-consent-description" className="mt-1 block text-sm text-slate-500">말하는 구구단의 음성 채점을 위해 녹음한 음성이 AI 서비스로 전송될 수 있어요.</span>
-            </span>
+            <span className="font-bold">말하는 구구단 음성 채점을 위한 AI서비스 전송을 동의합니다</span>
           </label>
           <button
             type="submit"
