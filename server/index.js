@@ -13,6 +13,7 @@ const {
   ALLOWED_AUDIO_MIME_TYPES,
   MAX_AUDIO_SIZE_BYTES,
   cleanMimeType,
+  getAllowedOrigins,
   getGeminiApiKey,
   normalizeEvaluation,
   parseGeminiJson,
@@ -23,8 +24,13 @@ const {
 const app = express();
 const port = process.env.PORT || 5000;
 
-const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
-app.use(cors({ origin: clientOrigin, methods: ['GET', 'POST'] }));
+const clientOrigins = getAllowedOrigins(process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN);
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, !origin || clientOrigins.includes(origin));
+  },
+  methods: ['GET', 'POST'],
+}));
 app.use(express.json());
 
 const upload = multer({

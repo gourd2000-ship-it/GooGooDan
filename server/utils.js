@@ -1,5 +1,6 @@
 const MAX_AUDIO_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_AUDIO_MIME_TYPES = new Set(['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav']);
+const DEFAULT_CLIENT_ORIGINS = ['http://localhost:5173', 'https://goo-goo-dan.vercel.app'];
 const FALLBACK_FEEDBACK = '음성이 명확하지 않거나 들리지 않아요. 다시 한 번 큰 소리로 말씀해 주시겠어요?';
 
 /**
@@ -93,6 +94,13 @@ function getGeminiApiKey(environment = process.env) {
   return typeof environment.GEMINI_API_KEY === 'string' ? environment.GEMINI_API_KEY.trim() : '';
 }
 
+function getAllowedOrigins(configuredOrigins) {
+  if (typeof configuredOrigins !== 'string' || !configuredOrigins.trim()) {
+    return [...DEFAULT_CLIENT_ORIGINS];
+  }
+  return [...new Set(configuredOrigins.split(',').map((origin) => origin.trim()).filter(Boolean))];
+}
+
 function expectedAnswerForQuestion(question) {
   const match = /^(\d+) x (\d+)$/.exec(question);
   return match ? String(Number(match[1]) * Number(match[2])) : '';
@@ -143,6 +151,7 @@ module.exports = {
   ALLOWED_AUDIO_MIME_TYPES,
   MAX_AUDIO_SIZE_BYTES,
   cleanMimeType,
+  getAllowedOrigins,
   getGeminiApiKey,
   normalizeEvaluation,
   parseGeminiJson,

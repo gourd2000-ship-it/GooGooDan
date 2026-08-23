@@ -6,6 +6,7 @@ const {
   validateExpectedQuestions,
   normalizeEvaluation,
   getGeminiApiKey,
+  getAllowedOrigins,
   validateAudioFile,
   MAX_AUDIO_SIZE_BYTES,
 } = require('./utils');
@@ -59,6 +60,14 @@ test('getGeminiApiKey: GEMINI_API_KEY만 허용하고 클라이언트용 VITE �
   assert.strictEqual(getGeminiApiKey({ GEMINI_API_KEY: '  server-key  ' }), 'server-key');
   assert.strictEqual(getGeminiApiKey({ VITE_GEMINI_API_KEY: 'public-key' }), '');
   assert.strictEqual(getGeminiApiKey({}), '');
+});
+
+test('getAllowedOrigins: 기본 Vercel 배포 도메인을 허용하고 환경변수의 복수 Origin을 지원해야 함', () => {
+  assert.deepStrictEqual(getAllowedOrigins(), ['http://localhost:5173', 'https://goo-goo-dan.vercel.app']);
+  assert.deepStrictEqual(
+    getAllowedOrigins('https://preview.example.com, https://goo-goo-dan.vercel.app'),
+    ['https://preview.example.com', 'https://goo-goo-dan.vercel.app'],
+  );
 });
 
 test('validateExpectedQuestions: 선택한 단과 모드에 맞는 정확히 10개 문제만 허용해야 함', () => {
