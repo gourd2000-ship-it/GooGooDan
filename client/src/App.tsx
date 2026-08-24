@@ -18,6 +18,12 @@ function LoadingScreen() {
 
 function App() {
   const currentScreen = useStore((state) => state.currentScreen);
+  const sessionStatus = useStore((state) => state.sessionStatus);
+  const restoreSession = useStore((state) => state.restoreSession);
+
+  useEffect(() => { void restoreSession(); }, [restoreSession]);
+
+  if (sessionStatus === 'restoring') return <LoadingScreen />;
 
   return (
     <div className="w-full h-full font-sans">
@@ -33,3 +39,4 @@ function App() {
 }
 
 export default App;
+import { useEffect } from 'react';

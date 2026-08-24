@@ -224,3 +224,10 @@
 - [ ] 전체 서버·클라이언트 테스트 통과
 - [ ] 실제 HTTPS 배포에서 Google 로그인·세션 쿠키·CORS 확인
 - [ ] 학교별 주소, 명부 관리, 대시보드를 한 학급으로 시범 운영
+## M1 execution checklist (2026-08-24)
+
+- [ ] Task 1: Add and test student PIN/session APIs.
+- [ ] Task 2: Add and test client session restore/logout state.
+- [ ] Task 3: Add and test authenticated speech/tap record ownership.
+- [ ] Task 4: Add and test best-record ranking and progress aggregation.
+- [ ] Checkpoint: Server and client suites pass; client production build passes.

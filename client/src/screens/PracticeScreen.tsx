@@ -121,6 +121,7 @@ export default function PracticeScreen() {
       const res = await fetch(`${API_URL}/api/evaluate`, {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
       
       const rawText = await res.text();

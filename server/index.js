@@ -8,6 +8,11 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const { Pool } = require('pg');
+const { createGoogleIdTokenVerifier, createPoolAdminLookup, createRequireAdmin } = require('./adminAuth');
+const { createCorsOptions, createSessionCookieOptions } = require('./httpSecurity');
+const { createPgStudentAuthRepository, createStudentAuthHttpHandlers, createStudentAuthService } = require('./auth');
+const { summarizeProgress } = require('./ranking');
+const { createTenantMiddleware, parseTenantConfiguration } = require('./tenant');
 const { createGeminiClient, evaluateAudio } = require('./gemini');
 const {
   ALLOWED_AUDIO_MIME_TYPES,
@@ -27,12 +32,8 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 const clientOrigins = getAllowedOrigins(process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN);
-app.use(cors({
-  origin(origin, callback) {
-    callback(null, !origin || clientOrigins.includes(origin));
-  },
-  methods: ['GET', 'POST'],
-}));
+if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+app.use(cors(createCorsOptions(clientOrigins)));
 app.use(express.json());
 
 const upload = multer({
@@ -73,6 +74,27 @@ if (DATABASE_URL) {
   console.warn('⚠️ 경고: DATABASE_URL이 누락되었습니다. DB 저장 및 랭킹 기능이 제한됩니다.');
 }
 
+const tenantConfiguration = parseTenantConfiguration(process.env.SCHOOL_TENANTS);
+const requireTenant = createTenantMiddleware(tenantConfiguration);
+const verifyGoogleIdToken = process.env.GOOGLE_OAUTH_CLIENT_ID
+  ? createGoogleIdTokenVerifier({ clientId: process.env.GOOGLE_OAUTH_CLIENT_ID })
+  : null;
+const requireAdmin = verifyGoogleIdToken
+  ? createRequireAdmin({ verifyGoogleIdToken, findAdmin: createPoolAdminLookup(pool) })
+  : (req, res) => res.status(503).json({ error: 'Administrator authentication is not configured' });
+const studentAuthHandlers = pool
+  ? createStudentAuthHttpHandlers({
+    service: createStudentAuthService({ repository: createPgStudentAuthRepository(pool) }),
+    cookieOptions: createSessionCookieOptions(process.env, 14 * 24 * 60 * 60 * 1000),
+  })
+  : null;
+const requireStudentAuthService = (req, res, next) => studentAuthHandlers
+  ? next()
+  : res.status(503).json({ error: 'Student authentication is not configured' });
+const requireStudent = studentAuthHandlers
+  ? studentAuthHandlers.requireStudent
+  : (req, res) => res.status(503).json({ error: 'Student authentication is not configured' });
+
 // 테스트용 루트 API
 app.get('/', (req, res) => {
   res.send('말하는 구구단 챌린지 서버가 정상 작동 중입니다!');
@@ -84,8 +106,29 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', hasGeminiKey: hasKey, hasDb: !!pool });
 });
 
+// M0 boundaries apply to all administrator routes before any handler runs.
+app.use('/api/admin', requireTenant, requireAdmin);
+app.get('/api/admin/session', (req, res) => {
+  res.json({ schoolId: req.tenant.id, administrator: req.admin });
+});
+app.get('/api/admin/progress', async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'Progress data is unavailable' });
+  try {
+    const { rows } = await pool.query('SELECT s.id AS student_id, s.student_name, s.grade, s.class_number, r.table_number, r.practice_type, r.score, r.total_correct, r.total_time_ms FROM students s JOIN records r ON r.student_id = s.id WHERE s.school_id = $1 AND r.school_id = $1 AND r.student_id IS NOT NULL AND r.table_number BETWEEN 2 AND 9', [req.tenant.id]);
+    return res.json({ students: summarizeProgress(rows.map((row) => ({ studentId: row.student_id, studentName: row.student_name, grade: row.grade, classNumber: row.class_number, table: row.table_number, practiceType: row.practice_type, score: row.score, totalCorrect: row.total_correct, totalTimeMs: row.total_time_ms }))) });
+  } catch {
+    return res.status(500).json({ error: 'Unable to load progress' });
+  }
+});
+
+app.use('/api/auth', requireTenant, requireStudentAuthService);
+app.post('/api/auth/student/login', (req, res) => studentAuthHandlers.login(req, res));
+app.get('/api/auth/session', (req, res) => studentAuthHandlers.session(req, res));
+app.post('/api/auth/logout', (req, res) => studentAuthHandlers.logout(req, res));
+app.patch('/api/auth/access-code', (req, res) => studentAuthHandlers.changeAccessCode(req, res));
+
 // 랭킹 조회 API (8단계)
-app.get('/api/ranking', async (req, res) => {
+app.get('/api/ranking', requireTenant, async (req, res) => {
   try {
     const { table } = req.query;
     const practiceType = validatePracticeType(req.query.practiceType);
@@ -96,39 +139,25 @@ app.get('/api/ranking', async (req, res) => {
     if (parsedTable !== null && (!Number.isInteger(parsedTable) || parsedTable < 2 || parsedTable > 9)) {
       return res.status(400).json({ error: '유효하지 않은 단 선택입니다.' });
     }
-    if (!pool) {
-      console.warn('⚠️ Neon DB 미설정으로 더미 랭킹 데이터를 반환합니다.');
-      const dummyData = practiceType === 'tap' ? [
-        { student_name: '누르기달인', table_number: 7, mode: 'random', score: 200, total_time_ms: 7200 },
-        { student_name: '척척누르미', table_number: 3, mode: 'reverse', score: 90, total_time_ms: 9800 },
-      ] : [
-        { student_name: '구구단박사', table_number: 9, mode: 'random', score: 200, total_time_ms: 8500 },
-        { student_name: '바나나친구', table_number: 2, mode: 'sequential', score: 100, total_time_ms: 12000 },
-        { student_name: '척척박사', table_number: 5, mode: 'reverse', score: 88, total_time_ms: 15000 },
-      ];
-      if (parsedTable !== null) {
-        return res.json(dummyData.filter(item => item.table_number === parsedTable));
-      }
-      return res.json(dummyData);
-    }
+    if (!pool) return res.status(503).json({ error: 'Ranking data is unavailable' });
 
-    let query = 'SELECT student_name, table_number, mode, score, total_time_ms FROM records WHERE practice_type = $1';
-    const params = [practiceType];
+    let query = 'SELECT DISTINCT ON (r.student_id) s.student_name, r.table_number, r.mode, r.score, r.total_time_ms FROM records r JOIN students s ON s.id = r.student_id WHERE r.school_id = $1 AND r.student_id IS NOT NULL AND r.practice_type = $2';
+    const params = [req.tenant.id, practiceType];
     if (parsedTable !== null) {
-      query += ' AND table_number = $2';
+      query += ' AND r.table_number = $3';
       params.push(parsedTable);
     }
-    query += ' ORDER BY score DESC, total_time_ms ASC LIMIT 10';
+    query += ' ORDER BY r.student_id, r.score DESC, r.total_time_ms ASC';
 
     const { rows } = await pool.query(query, params);
-    res.json(rows);
+    res.json(rows.sort((left, right) => right.score - left.score || left.total_time_ms - right.total_time_ms).slice(0, 10));
   } catch (error) {
     console.error('랭킹 조회 오류:', error);
     res.status(500).json({ error: '랭킹을 불러오지 못했습니다.' });
   }
 });
 
-app.post('/api/record', async (req, res) => {
+app.post('/api/record', requireTenant, requireStudent, async (req, res) => {
   const validation = validateTapRecord(req.body);
   if (!validation.valid) {
     return res.status(400).json({ error: validation.reason });
@@ -140,8 +169,8 @@ app.post('/api/record', async (req, res) => {
   const record = validation.value;
   try {
     await pool.query(
-      'INSERT INTO records (student_name, table_number, mode, score, total_time_ms, practice_type, tap_game_mode) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-      [record.userName, record.table, record.mode, record.score, record.totalTime, 'tap', record.gameMode],
+      'INSERT INTO records (student_name, table_number, mode, score, total_time_ms, practice_type, tap_game_mode, school_id, student_id, total_correct) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+      [req.student.studentName, record.table, record.mode, record.score, record.totalTime, 'tap', record.gameMode, req.student.schoolId, req.student.id, record.totalCorrect],
     );
     return res.status(201).json({ score: record.score, saved: true });
   } catch (error) {
@@ -151,7 +180,7 @@ app.post('/api/record', async (req, res) => {
 });
 
 // AI 채점 API (오디오 파일을 받아 Gemini로 평가)
-app.post('/api/evaluate', (req, res) => {
+app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
   upload.single('audio')(req, res, async (uploadErr) => {
     if (uploadErr) {
       console.error('❌ 멀터 오디오 수신 에러:', uploadErr);
@@ -164,7 +193,7 @@ app.post('/api/evaluate', (req, res) => {
         return res.status(400).json({ error: audioCheck.reason });
       }
 
-    const { table, mode, expectedAnswers, userName, totalTime } = req.body;
+    const { table, mode, expectedAnswers, totalTime } = req.body;
 
     // 입력값 검증 (보안 강화 및 SQL injection/XSS 사전 예방)
     const parsedTable = Number(table);
@@ -178,11 +207,7 @@ app.post('/api/evaluate', (req, res) => {
     }
 
     // 이름 검증: 특수문자, 스크립트 코드 필터링
-    const cleanName = userName ? userName.trim() : '';
-    const nameRegex = /^[a-zA-Z0-9가-힣\s]{1,10}$/;
-    if (!cleanName || !nameRegex.test(cleanName)) {
-      return res.status(400).json({ error: '이름은 특수문자 없이 1~10자 이내로 입력해주세요.' });
-    }
+    const cleanName = req.student.studentName;
 
     const parsedTotalTime = Number(totalTime);
     if (!Number.isInteger(parsedTotalTime) || parsedTotalTime < 0) {
@@ -275,8 +300,8 @@ app.post('/api/evaluate', (req, res) => {
       
       try {
         await pool.query(
-          'INSERT INTO records (student_name, table_number, mode, score, total_time_ms, practice_type, tap_game_mode) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [cleanName, parsedTable, mode, score, totalTimeMs, 'speech', null]
+          'INSERT INTO records (student_name, table_number, mode, score, total_time_ms, practice_type, tap_game_mode, school_id, student_id, total_correct) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+          [cleanName, parsedTable, mode, score, totalTimeMs, 'speech', null, req.student.schoolId, req.student.id, normalizedEvaluation.totalCorrect]
         );
         console.log('✅ Neon DB에 기록 저장 성공');
       } catch (dbError) {

@@ -55,3 +55,50 @@
 | 4자리 PIN 보안 | 해시·시도 제한·세션 폐기·접속 범위 제한 |
 | 다학교 데이터 노출 | 모든 서버 쿼리에 `school_id`를 필수 조건으로 적용 |
 | 집계 성능 저하 | 먼저 인덱스와 쿼리로 측정하고, 필요할 때만 요약 테이블을 추가 |
+# M1 implementation plan
+
+## Task 1: Student authentication boundary
+
+Implement PIN hashing and verification, opaque server-side sessions, login,
+restore, logout, and access-code replacement. The resolved tenant always
+determines the school and no response or log contains a code or token hash.
+
+Acceptance criteria:
+
+- [ ] A PIN works only for an active student in its school, grade, and class.
+- [ ] Expired or revoked sessions cannot be restored.
+- [ ] Access codes never leave the server as plaintext.
+
+Verification: focused server auth test, then the server test suite.
+
+## Task 2: Client session contract
+
+Add a credentials-including API client and Zustand session restoration that
+returns an authenticated student to Home and clears learning state on logout.
+
+Acceptance criteria:
+
+- [ ] Every authentication request includes credentials.
+- [ ] Restore accepts only a valid student response.
+- [ ] Logout clears student and learning state.
+
+Verification: focused client auth/store tests, client test suite, and build.
+
+## Task 3: Authenticated records
+
+Require a student session for speech and tap records, using only the server
+session for the owner and display name.
+
+Acceptance criteria:
+
+- [ ] Unauthenticated record requests are rejected.
+- [ ] Both practice types persist the authenticated student ID.
+- [ ] A client name cannot change ownership.
+
+Verification: focused server record ownership tests.
+
+## Task 4: Ranking and progress contract
+
+Select one best record per student with score-descending/time-ascending ties,
+exclude legacy anonymous rows, and expose a per-student/table/practice progress
+contract for the administrator dashboard.

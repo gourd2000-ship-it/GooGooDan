@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type { PracticeOrder, PracticeType, TapGameMode, TapQuestion } from '../lib/practice';
+import { logoutStudent, restoreStudentSession, type StudentSession } from '../lib/auth';
+import { API_URL } from '../config';
 
 export type ScreenType = 'name' | 'home' | 'practice' | 'tapPractice' | 'loading' | 'result' | 'ranking';
 
@@ -30,10 +32,13 @@ export interface TapEvaluationResult {
 }
 
 export type TapRecordStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type SessionStatus = 'restoring' | 'authenticated' | 'anonymous';
 
 interface AppState {
   currentScreen: ScreenType;
   userName: string;
+  student: StudentSession | null;
+  sessionStatus: SessionStatus;
   hasVoiceConsent: boolean;
   practiceType: PracticeType;
   tapGameMode: TapGameMode;
@@ -51,6 +56,8 @@ interface AppState {
   totalTime: number;
   setScreen: (screen: ScreenType) => void;
   setUserName: (name: string) => void;
+  restoreSession: () => Promise<void>;
+  logout: () => Promise<void>;
   setVoiceConsent: (hasConsent: boolean) => void;
   setPracticeType: (type: PracticeType) => void;
   setTapGameMode: (mode: TapGameMode) => void;
@@ -72,6 +79,8 @@ interface AppState {
 export const useStore = create<AppState>((set) => ({
   currentScreen: 'name',
   userName: '',
+  student: null,
+  sessionStatus: 'restoring',
   hasVoiceConsent: false,
   practiceType: 'speech',
   tapGameMode: 'answer',
@@ -89,6 +98,27 @@ export const useStore = create<AppState>((set) => ({
   totalTime: 0,
   setScreen: (screen) => set({ currentScreen: screen }),
   setUserName: (userName) => set({ userName }),
+  restoreSession: async () => {
+    try {
+      const student = await restoreStudentSession(API_URL);
+      set({ student, userName: student.studentName, sessionStatus: 'authenticated', currentScreen: 'home' });
+    } catch {
+      set({ student: null, userName: '', sessionStatus: 'anonymous', currentScreen: 'name' });
+    }
+  },
+  logout: async () => {
+    try {
+      await logoutStudent(API_URL);
+    } finally {
+      set({
+        currentScreen: 'name', userName: '', student: null, sessionStatus: 'anonymous',
+        practiceType: 'speech', tapGameMode: 'answer', speechTable: 2, speechMode: 'sequential',
+        tapTable: 2, tapMode: 'sequential', selectedTable: 2, mode: 'sequential',
+        expectedQuestions: [], tapQuestions: [], evaluationResult: null, tapEvaluationResult: null,
+        tapRecordStatus: 'idle', totalTime: 0,
+      });
+    }
+  },
   setVoiceConsent: (hasVoiceConsent) => set({ hasVoiceConsent }),
   setPracticeType: (practiceType) => set({ practiceType }),
   setTapGameMode: (tapGameMode) => set({ tapGameMode }),

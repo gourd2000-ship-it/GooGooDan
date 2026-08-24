@@ -21,6 +21,7 @@ export async function saveTapRecord(apiUrl: string, payload: TapRecordPayload, f
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    credentials: 'include',
   });
   const body = await response.json();
   if (!response.ok) throw new Error(getErrorMessage(body));

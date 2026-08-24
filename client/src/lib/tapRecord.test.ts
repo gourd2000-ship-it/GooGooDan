@@ -17,6 +17,7 @@ describe('saveTapRecord', () => {
     expect(fetcher).toHaveBeenCalledWith('https://api.example.com/api/record', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         table: 3,
         mode: 'sequential',
