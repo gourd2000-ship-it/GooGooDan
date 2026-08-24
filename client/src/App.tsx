@@ -1,4 +1,4 @@
-
+import { useEffect } from 'react';
 import { useStore } from './store/useStore';
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -6,6 +6,7 @@ import PracticeScreen from './screens/PracticeScreen';
 import TapPracticeScreen from './screens/TapPracticeScreen';
 import ResultScreen from './screens/ResultScreen';
 import RankingScreen from './screens/RankingScreen';
+import AdminPortal from './screens/AdminPortal';
 
 function LoadingScreen() {
   return (
@@ -16,7 +17,7 @@ function LoadingScreen() {
   );
 }
 
-function App() {
+function StudentApp() {
   const currentScreen = useStore((state) => state.currentScreen);
   const sessionStatus = useStore((state) => state.sessionStatus);
   const restoreSession = useStore((state) => state.restoreSession);
@@ -38,5 +39,6 @@ function App() {
   );
 }
 
-export default App;
-import { useEffect } from 'react';
+export default function App() {
+  return window.location.pathname.startsWith('/admin') ? <AdminPortal /> : <StudentApp />;
+}

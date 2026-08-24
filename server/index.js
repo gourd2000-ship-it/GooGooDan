@@ -9,9 +9,10 @@ const cors = require('cors');
 const multer = require('multer');
 const { Pool } = require('pg');
 const { createGoogleIdTokenVerifier, createPoolAdminLookup, createRequireAdmin } = require('./adminAuth');
+const { createAdminStudentHttpHandlers, createAdminStudentService, createPgAdminStudentRepository } = require('./adminStudents');
+const { createAdminProgressHttpHandler, createAdminProgressService, createPgAdminProgressRepository } = require('./adminProgress');
 const { createCorsOptions, createSessionCookieOptions } = require('./httpSecurity');
 const { createPgStudentAuthRepository, createStudentAuthHttpHandlers, createStudentAuthService } = require('./auth');
-const { summarizeProgress } = require('./ranking');
 const { createTenantMiddleware, parseTenantConfiguration } = require('./tenant');
 const { createGeminiClient, evaluateAudio } = require('./gemini');
 const {
@@ -88,6 +89,12 @@ const studentAuthHandlers = pool
     cookieOptions: createSessionCookieOptions(process.env, 14 * 24 * 60 * 60 * 1000),
   })
   : null;
+const adminStudentHandlers = pool
+  ? createAdminStudentHttpHandlers({ service: createAdminStudentService({ repository: createPgAdminStudentRepository(pool) }) })
+  : null;
+const adminProgressHandler = pool
+  ? createAdminProgressHttpHandler({ service: createAdminProgressService({ repository: createPgAdminProgressRepository(pool) }) })
+  : null;
 const requireStudentAuthService = (req, res, next) => studentAuthHandlers
   ? next()
   : res.status(503).json({ error: 'Student authentication is not configured' });
@@ -111,15 +118,11 @@ app.use('/api/admin', requireTenant, requireAdmin);
 app.get('/api/admin/session', (req, res) => {
   res.json({ schoolId: req.tenant.id, administrator: req.admin });
 });
-app.get('/api/admin/progress', async (req, res) => {
-  if (!pool) return res.status(503).json({ error: 'Progress data is unavailable' });
-  try {
-    const { rows } = await pool.query('SELECT s.id AS student_id, s.student_name, s.grade, s.class_number, r.table_number, r.practice_type, r.score, r.total_correct, r.total_time_ms FROM students s JOIN records r ON r.student_id = s.id WHERE s.school_id = $1 AND r.school_id = $1 AND r.student_id IS NOT NULL AND r.table_number BETWEEN 2 AND 9', [req.tenant.id]);
-    return res.json({ students: summarizeProgress(rows.map((row) => ({ studentId: row.student_id, studentName: row.student_name, grade: row.grade, classNumber: row.class_number, table: row.table_number, practiceType: row.practice_type, score: row.score, totalCorrect: row.total_correct, totalTimeMs: row.total_time_ms }))) });
-  } catch {
-    return res.status(500).json({ error: 'Unable to load progress' });
-  }
-});
+app.get('/api/admin/progress', (req, res) => adminProgressHandler ? adminProgressHandler(req, res) : res.status(503).json({ error: 'Progress data is unavailable' }));
+app.get('/api/admin/students', (req, res) => adminStudentHandlers ? adminStudentHandlers.list(req, res) : res.status(503).json({ error: 'Student management is unavailable' }));
+app.post('/api/admin/students', (req, res) => adminStudentHandlers ? adminStudentHandlers.create(req, res) : res.status(503).json({ error: 'Student management is unavailable' }));
+app.post('/api/admin/students/import', (req, res) => adminStudentHandlers ? adminStudentHandlers.import(req, res) : res.status(503).json({ error: 'Student management is unavailable' }));
+app.patch('/api/admin/students/:studentId', (req, res) => adminStudentHandlers ? adminStudentHandlers.update(req, res) : res.status(503).json({ error: 'Student management is unavailable' }));
 
 app.use('/api/auth', requireTenant, requireStudentAuthService);
 app.post('/api/auth/student/login', (req, res) => studentAuthHandlers.login(req, res));
