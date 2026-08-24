@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import type { EvaluationResult } from '../store/useStore';
 import { Mic, Square, ChevronDown } from 'lucide-react';
 import { API_URL } from '../config';
 
 const getCurrentTime = () => Date.now();
+const MAX_RECORDING_DURATION_MS = 60_000;
 
 function getApiErrorMessage(value: unknown, fallback: string) {
   if (value && typeof value === 'object' && 'error' in value && typeof value.error === 'string') {
@@ -51,7 +52,7 @@ export default function PracticeScreen() {
     let timer: ReturnType<typeof setInterval> | undefined;
     if (isRecording) {
       timer = setInterval(() => {
-        const elapsed = getCurrentTime() - startTimeRef.current;
+        const elapsed = Math.min(getCurrentTime() - startTimeRef.current, MAX_RECORDING_DURATION_MS);
         timeRef.current = elapsed;
         setTime(elapsed);
       }, 100);
@@ -60,6 +61,32 @@ export default function PracticeScreen() {
       if (timer) clearInterval(timer);
     };
   }, [isRecording]);
+
+  const stopRecording = useCallback(() => {
+    setIsRecording(false);
+    if (startTimeRef.current > 0) {
+      const finalTime = Math.min(getCurrentTime() - startTimeRef.current, MAX_RECORDING_DURATION_MS);
+      timeRef.current = finalTime;
+      setTime(finalTime);
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      setScreen('loading');
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  }, [setScreen]);
+
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const remainingDuration = Math.max(
+      0,
+      MAX_RECORDING_DURATION_MS - (getCurrentTime() - startTimeRef.current),
+    );
+    const timeout = setTimeout(stopRecording, remainingDuration);
+
+    return () => clearTimeout(timeout);
+  }, [isRecording, stopRecording]);
 
   const handleStartRecording = async () => {
     try {
@@ -91,16 +118,7 @@ export default function PracticeScreen() {
   };
 
   const handleStopRecording = () => {
-    setIsRecording(false);
-    if (startTimeRef.current > 0) {
-      const finalTime = getCurrentTime() - startTimeRef.current;
-      timeRef.current = finalTime;
-      setTime(finalTime);
-    }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-    }
+    stopRecording();
   };
 
   const uploadAudio = async (blob: Blob) => {
