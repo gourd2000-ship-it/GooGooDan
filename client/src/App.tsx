@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useStore } from './store/useStore';
 import LoginScreen from './screens/LoginScreen';
@@ -6,7 +7,9 @@ import PracticeScreen from './screens/PracticeScreen';
 import TapPracticeScreen from './screens/TapPracticeScreen';
 import ResultScreen from './screens/ResultScreen';
 import RankingScreen from './screens/RankingScreen';
+import ProfileScreen from './screens/ProfileScreen';
 import AdminPortal from './screens/AdminPortal';
+import { readScreenHistory } from './lib/screenHistory';
 
 function LoadingScreen() {
   return (
@@ -23,6 +26,21 @@ function StudentApp() {
   const restoreSession = useStore((state) => state.restoreSession);
 
   useEffect(() => { void restoreSession(); }, [restoreSession]);
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const target = readScreenHistory(event.state);
+      const state = useStore.getState();
+      if (state.sessionStatus === 'authenticated' && target && target !== 'name') {
+        useStore.setState({ currentScreen: target });
+        return;
+      }
+      if (state.sessionStatus !== 'restoring') {
+        useStore.getState().restoreSession().catch(() => undefined);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   if (sessionStatus === 'restoring') return <LoadingScreen />;
 
@@ -35,6 +53,7 @@ function StudentApp() {
       {currentScreen === 'loading' && <LoadingScreen />}
       {currentScreen === 'result' && <ResultScreen />}
       {currentScreen === 'ranking' && <RankingScreen />}
+      {currentScreen === 'profile' && <ProfileScreen />}
     </div>
   );
 }

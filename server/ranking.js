@@ -15,12 +15,13 @@ function selectBestRecords(records) {
 function summarizeProgress(records) {
   const students = new Map();
   for (const record of records) {
-    if (!record.studentId || !record.table || !['speech', 'tap'].includes(record.practiceType)) continue;
+    if (!record.studentId) continue;
     let student = students.get(record.studentId);
     if (!student) {
       student = { studentId: record.studentId, studentName: record.studentName, grade: record.grade, classNumber: record.classNumber, tables: {} };
       students.set(record.studentId, student);
     }
+    if (!record.table || !['speech', 'tap'].includes(record.practiceType)) continue;
     const table = student.tables[record.table] ||= {};
     const current = table[record.practiceType];
     if (!current || compareRecords(record, current._record) < 0) {

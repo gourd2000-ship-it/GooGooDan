@@ -12,50 +12,31 @@ interface RankingRecord {
   total_time_ms: number;
 }
 
-const dummyRanking: Record<PracticeType, RankingRecord[]> = {
-  speech: [
-    { student_name: '구구단박사', table_number: 9, mode: 'random', score: 200, total_time_ms: 8500 },
-    { student_name: '바나나친구', table_number: 2, mode: 'sequential', score: 100, total_time_ms: 12000 },
-    { student_name: '척척박사', table_number: 5, mode: 'reverse', score: 88, total_time_ms: 15000 },
-  ],
-  tap: [
-    { student_name: '누르기달인', table_number: 7, mode: 'random', score: 200, total_time_ms: 7200 },
-    { student_name: '척척누르미', table_number: 3, mode: 'reverse', score: 90, total_time_ms: 9800 },
-  ],
-};
-
 export default function RankingScreen() {
   const { setScreen } = useStore();
   const [ranking, setRanking] = useState<RankingRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'all' | number>('all');
   const [selectedPracticeType, setSelectedPracticeType] = useState<PracticeType>('speech');
+  const [error, setError] = useState(false);
   const modeLabel = (mode: RankingRecord['mode']) => ({ sequential: '순서대로', reverse: '거꾸로', random: '섞어서' })[mode];
 
   useEffect(() => {
     const fetchRanking = async () => {
       setLoading(true);
+      setError(false);
       try {
         const params = new URLSearchParams({ practiceType: selectedPracticeType });
         if (selectedTab !== 'all') params.set('table', String(selectedTab));
         const url = `${API_URL}/api/ranking?${params.toString()}`;
         const res = await fetch(url);
-        const data = await res.json();
-        const filteredDummy = selectedTab === 'all' 
-          ? dummyRanking[selectedPracticeType]
-          : dummyRanking[selectedPracticeType].filter(r => r.table_number === selectedTab);
-
-        if (data && data.length > 0) {
-          setRanking(data);
-        } else {
-          setRanking(filteredDummy);
-        }
+        const data: unknown = await res.json();
+        if (!res.ok || !Array.isArray(data)) throw new Error('Failed to fetch ranking');
+        setRanking(data as RankingRecord[]);
       } catch (error) {
         console.error('Failed to fetch ranking:', error);
-        const filteredDummy = selectedTab === 'all' 
-          ? dummyRanking[selectedPracticeType]
-          : dummyRanking[selectedPracticeType].filter(r => r.table_number === selectedTab);
-        setRanking(filteredDummy);
+        setRanking([]);
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -127,7 +108,9 @@ export default function RankingScreen() {
           </div>
         ) : (
           <div className="space-y-4">
-            {ranking.length === 0 ? (
+            {error ? (
+              <div role="alert" className="py-16 text-center font-bold text-red-500">랭킹을 불러오지 못했어요. 다시 시도해 주세요.</div>
+            ) : ranking.length === 0 ? (
               <div className="py-16 text-center text-slate-400 font-bold">
                 아직 이 단의 랭킹 기록이 없습니다. 제일 먼저 도전해 보세요! 🏃
               </div>

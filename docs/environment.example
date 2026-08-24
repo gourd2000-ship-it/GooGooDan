@@ -1,0 +1,12 @@
+# Server
+NODE_ENV=production
+PORT=5000
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
+GEMINI_API_KEY=your-server-only-gemini-key
+GOOGLE_OAUTH_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+CLIENT_ORIGINS=https://app.example.com
+SCHOOL_TENANTS=[{"id":"11111111-1111-4111-8111-111111111111","name":"Alpha Elementary","host":"alpha.example.com","workspaceDomain":"alpha.edu","initialAdminSubjects":["google-account-subject"]}]
+
+# Client build-time variables
+VITE_API_URL=https://api.example.com
+VITE_GOOGLE_OAUTH_CLIENT_ID=your-web-client-id.apps.googleusercontent.com

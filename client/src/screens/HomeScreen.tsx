@@ -1,4 +1,4 @@
-import { Play, Trophy } from 'lucide-react';
+import { Play, Trophy, UserRoundCog } from 'lucide-react';
 import { buildTapQuestions, createQuestionOrder } from '../lib/practice';
 import type { PracticeOrder, PracticeType, TapGameMode } from '../lib/practice';
 import { useStore } from '../store/useStore';
@@ -109,10 +109,8 @@ export default function HomeScreen() {
   return (
     <div className="relative flex min-h-screen flex-col items-center bg-slate-50 p-4">
       <div className="absolute top-0 flex w-full max-w-4xl items-center justify-between p-4">
-        <div className="rounded-full border-2 border-slate-100 bg-white px-4 py-2 shadow-sm"><span className="font-bold text-slate-700">{store.userName}</span>어린이 👋</div>
-        <button onClick={() => store.setScreen('ranking')} className="flex items-center gap-2 rounded-full border-2 border-amber-200 bg-amber-100 px-4 py-2 font-bold text-amber-700 shadow-sm transition-transform hover:scale-105 hover:bg-amber-200">
-          <Trophy size={18} />명예의 전당
-        </button>
+        <button type="button" aria-label="내 정보" onClick={() => store.setScreen('profile')} className="flex items-center gap-2 rounded-full border-2 border-slate-100 bg-white px-4 py-2 font-bold text-slate-700 shadow-sm"><UserRoundCog size={18} /><span>{store.userName} 어린이</span></button>
+        <button type="button" onClick={() => store.setScreen('ranking')} className="flex items-center gap-2 rounded-full border-2 border-amber-200 bg-amber-100 px-4 py-2 font-bold text-amber-700 shadow-sm transition-transform hover:scale-105 hover:bg-amber-200"><Trophy size={18} />명예의 전당</button>
       </div>
       <main className="mt-16 w-full max-w-4xl rounded-3xl border-4 border-blue-100 bg-white p-6 shadow-xl sm:p-8">
         <h1 className="mb-2 text-center text-4xl font-black text-blue-600">구구단 연습!</h1>

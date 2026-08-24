@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import type { PracticeOrder, PracticeType, TapGameMode, TapQuestion } from '../lib/practice';
-import { logoutStudent, restoreStudentSession, type StudentSession } from '../lib/auth';
+import { changeStudentAccessCode, loginStudent, logoutStudent, restoreStudentSession, type ChangeAccessCodeInput, type StudentLoginInput, type StudentSession } from '../lib/auth';
 import { API_URL } from '../config';
+import { pushScreenHistory, replaceScreenHistory } from '../lib/screenHistory';
 
-export type ScreenType = 'name' | 'home' | 'practice' | 'tapPractice' | 'loading' | 'result' | 'ranking';
+export type ScreenType = 'name' | 'home' | 'practice' | 'tapPractice' | 'loading' | 'result' | 'ranking' | 'profile';
 
 export interface EvaluationItem {
   question: string;
@@ -56,6 +57,8 @@ interface AppState {
   totalTime: number;
   setScreen: (screen: ScreenType) => void;
   setUserName: (name: string) => void;
+  login: (input: StudentLoginInput) => Promise<void>;
+  changeAccessCode: (input: ChangeAccessCodeInput) => Promise<void>;
   restoreSession: () => Promise<void>;
   logout: () => Promise<void>;
   setVoiceConsent: (hasConsent: boolean) => void;
@@ -96,13 +99,24 @@ export const useStore = create<AppState>((set) => ({
   tapEvaluationResult: null,
   tapRecordStatus: 'idle',
   totalTime: 0,
-  setScreen: (screen) => set({ currentScreen: screen }),
+  setScreen: (screen) => {
+    pushScreenHistory(screen);
+    set({ currentScreen: screen });
+  },
   setUserName: (userName) => set({ userName }),
+  login: async (input) => {
+    const student = await loginStudent(API_URL, input);
+    replaceScreenHistory('home');
+    set({ student, userName: student.studentName, sessionStatus: 'authenticated', currentScreen: 'home' });
+  },
+  changeAccessCode: async (input) => changeStudentAccessCode(API_URL, input),
   restoreSession: async () => {
     try {
       const student = await restoreStudentSession(API_URL);
+      replaceScreenHistory('home');
       set({ student, userName: student.studentName, sessionStatus: 'authenticated', currentScreen: 'home' });
     } catch {
+      replaceScreenHistory('name');
       set({ student: null, userName: '', sessionStatus: 'anonymous', currentScreen: 'name' });
     }
   },
@@ -110,6 +124,7 @@ export const useStore = create<AppState>((set) => ({
     try {
       await logoutStudent(API_URL);
     } finally {
+      replaceScreenHistory('name');
       set({
         currentScreen: 'name', userName: '', student: null, sessionStatus: 'anonymous',
         practiceType: 'speech', tapGameMode: 'answer', speechTable: 2, speechMode: 'sequential',

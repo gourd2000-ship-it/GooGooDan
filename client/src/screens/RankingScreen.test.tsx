@@ -12,6 +12,7 @@ describe('RankingScreen', () => {
     useStore.getState().resetApp();
     useStore.setState({ currentScreen: 'ranking' });
     fetchMock.mockResolvedValue({
+      ok: true,
       json: async () => [{ student_name: '기록친구', table_number: 3, mode: 'random', score: 200, total_time_ms: 9000 }],
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -30,5 +31,13 @@ describe('RankingScreen', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining('practiceType=tap')));
     expect(screen.getByRole('button', { name: '누르는 구구단' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('shows an error instead of sample records when the ranking request fails', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Ranking data is unavailable' }) });
+    render(<RankingScreen />);
+
+    expect(await screen.findByText('랭킹을 불러오지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument();
+    expect(screen.queryByText('구구단박사')).not.toBeInTheDocument();
   });
 });

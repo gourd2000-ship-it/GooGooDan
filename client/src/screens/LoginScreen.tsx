@@ -1,17 +1,39 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { UserCircle } from 'lucide-react';
 
 export default function LoginScreen() {
-  const { hasVoiceConsent, setUserName, setVoiceConsent, setScreen } = useStore();
-  const [inputValue, setInputValue] = useState('');
+  const { hasVoiceConsent, setVoiceConsent, login } = useStore();
+  const [grade, setGrade] = useState('1');
+  const [classNumber, setClassNumber] = useState('1');
+  const [accessCode, setAccessCode] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim() && hasVoiceConsent) {
-      setUserName(inputValue.trim());
-      setScreen('home');
+  const submit = async (code = accessCode) => {
+    if (!hasVoiceConsent) {
+      setError('음성 채점 서비스 이용 동의가 필요해요.');
+      return;
     }
+    if (code.length !== 4 || isSubmitting) return;
+    setIsSubmitting(true);
+    setError('');
+    try {
+      await login({ grade: Number(grade), classNumber: Number(classNumber), accessCode: code });
+    } catch {
+      setAccessCode('');
+      setError('학년, 반, 접속번호를 다시 확인해 주세요.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const addDigit = (digit: string) => {
+    if (isSubmitting || accessCode.length >= 4) return;
+    const next = `${accessCode}${digit}`;
+    setAccessCode(next);
+    setError('');
+    if (next.length === 4) void submit(next);
   };
 
   return (
@@ -21,19 +43,27 @@ export default function LoginScreen() {
         <div className="flex justify-center mb-6 text-amber-500">
           <UserCircle size={80} />
         </div>
-        <h1 className="text-3xl font-black text-slate-800 mb-2">안녕! 네 이름은 뭐야?</h1>
-        <p className="text-slate-500 mb-8">친구의 멋진 이름이나 별명을 적어주세요!</p>
+        <h1 className="text-3xl font-black text-slate-800 mb-2">학년, 반, 접속번호를 입력해요</h1>
+        <p className="text-slate-500 mb-6">접속번호는 네 자리 숫자예요.</p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="이름 입력하기..."
-            className="w-full text-center text-2xl font-bold py-4 px-4 rounded-xl border-4 border-slate-100 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100 transition-all"
-            autoFocus
-            maxLength={10}
-          />
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3 text-left">
+            <label className="font-bold text-slate-700">학년
+              <select aria-label="학년" value={grade} onChange={(event) => setGrade(event.target.value)} className="mt-1 w-full rounded-xl border-2 border-slate-200 bg-white p-3 text-xl">
+                {[1, 2, 3, 4, 5, 6].map((value) => <option key={value} value={value}>{value}학년</option>)}
+              </select>
+            </label>
+            <label className="font-bold text-slate-700">반
+              <select aria-label="반" value={classNumber} onChange={(event) => setClassNumber(event.target.value)} className="mt-1 w-full rounded-xl border-2 border-slate-200 bg-white p-3 text-xl">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => <option key={value} value={value}>{value}반</option>)}
+              </select>
+            </label>
+          </div>
+          <p aria-label="접속번호 입력 상태" className="rounded-xl bg-slate-100 py-4 text-2xl font-black tracking-[0.35em] text-slate-700">{Array.from({ length: 4 }, (_, index) => index < accessCode.length ? '●' : '○').join(' ')}</p>
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit) => <button key={digit} type="button" aria-label={`${digit} 입력`} onClick={() => addDigit(String(digit))} className="rounded-xl bg-slate-100 py-4 text-2xl font-black text-slate-800 hover:bg-amber-100">{digit}</button>)}
+            <button type="button" aria-label="접속번호 지우기" onClick={() => setAccessCode((code) => code.slice(0, -1))} className="col-span-2 rounded-xl bg-slate-200 py-4 font-bold text-slate-700">지우기</button>
+          </div>
           <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-amber-100 bg-amber-50 p-4 text-left text-slate-700">
             <input
               type="checkbox"
@@ -44,18 +74,20 @@ export default function LoginScreen() {
             />
             <span className="font-bold">말하는 구구단 음성 채점을 위한 AI서비스 전송을 동의합니다</span>
           </label>
+          {error && <p role="alert" className="font-bold text-red-600">{error}</p>}
           <button
-            type="submit"
-            disabled={!inputValue.trim() || !hasVoiceConsent}
+            type="button"
+            onClick={() => void submit()}
+            disabled={accessCode.length !== 4 || !hasVoiceConsent || isSubmitting}
             className={`w-full font-bold text-2xl py-4 rounded-xl shadow-lg transition-transform ${
-              inputValue.trim() && hasVoiceConsent
+              accessCode.length === 4 && hasVoiceConsent && !isSubmitting
                 ? 'bg-amber-500 hover:bg-amber-600 text-white hover:scale-105' 
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
-            시작하기!
+            {isSubmitting ? '확인 중...' : '시작하기!'}
           </button>
-        </form>
+        </div>
       </div>
     </div>
   );
