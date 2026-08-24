@@ -38,4 +38,12 @@ describe('AdminStudentsScreen', () => {
     expect(screen.getByText('2행의 학생 이름을 입력해 주세요.')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('shows the signed-in Google subject after administrator access is denied', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'Administrator access required' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AdminStudentsScreen idToken="google-id-token" googleSubject="123456789012345678901" onDashboard={() => {}} onSignOut={() => {}} />);
+
+    expect(await screen.findByLabelText('관리자 등록용 Google sub')).toHaveValue('123456789012345678901');
+  });
 });

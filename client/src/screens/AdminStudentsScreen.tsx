@@ -4,6 +4,7 @@ import { API_URL } from '../config';
 
 interface Props {
   idToken: string;
+  googleSubject?: string | null;
   onDashboard: () => void;
   onSignOut: () => void;
 }
@@ -32,7 +33,7 @@ function parseCsv(text: string): AdminStudentInput[] {
   });
 }
 
-export default function AdminStudentsScreen({ idToken, onDashboard, onSignOut }: Props) {
+export default function AdminStudentsScreen({ idToken, googleSubject = null, onDashboard, onSignOut }: Props) {
   const [students, setStudents] = useState<AdminStudent[]>([]);
   const [filters, setFilters] = useState({ grade: '', classNumber: '', search: '' });
   const [input, setInput] = useState<AdminStudentInput>(emptyInput);
@@ -40,6 +41,7 @@ export default function AdminStudentsScreen({ idToken, onDashboard, onSignOut }:
   const [csv, setCsv] = useState('grade,classNumber,studentName,accessCode\n');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [subjectCopyMessage, setSubjectCopyMessage] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -80,6 +82,17 @@ export default function AdminStudentsScreen({ idToken, onDashboard, onSignOut }:
     } catch (error) { setMessage(error instanceof Error ? error.message : 'CSV를 등록하지 못했어요.'); }
   };
 
+  const bootstrapSubject = message === 'Administrator access required' ? googleSubject : null;
+  const copyBootstrapSubject = async () => {
+    if (!bootstrapSubject || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(bootstrapSubject);
+      setSubjectCopyMessage('복사됨');
+    } catch {
+      setSubjectCopyMessage('입력칸을 선택해 직접 복사해 주세요.');
+    }
+  };
+
   return <div className="min-h-screen bg-slate-50 p-4">
     <main className="mx-auto max-w-5xl rounded-3xl border-4 border-indigo-100 bg-white p-6 shadow-xl">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-3xl font-black text-slate-800">학생 명부 관리</h1><p className="text-slate-500">내 학교 학생만 관리할 수 있어요.</p></div><div className="flex gap-2"><button type="button" onClick={onDashboard} className="rounded-xl bg-indigo-100 px-4 py-2 font-bold text-indigo-700">성취 대시보드</button><button type="button" onClick={onSignOut} className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700">로그아웃</button></div></header>
@@ -87,6 +100,7 @@ export default function AdminStudentsScreen({ idToken, onDashboard, onSignOut }:
       <section className="mt-6 rounded-2xl border p-4"><h2 className="text-xl font-black">{editingStudentId ? '학생 수정' : '학생 등록'}</h2><div className="mt-3 grid gap-3 md:grid-cols-4"><label>학년<input aria-label="등록 학년" type="number" min="1" max="6" value={input.grade} onChange={(event) => setInput((value) => ({ ...value, grade: Number(event.target.value) }))} className="mt-1 w-full rounded-lg border p-2" /></label><label>반<input aria-label="등록 반" type="number" min="1" value={input.classNumber} onChange={(event) => setInput((value) => ({ ...value, classNumber: Number(event.target.value) }))} className="mt-1 w-full rounded-lg border p-2" /></label><label>이름<input aria-label="학생 이름" value={input.studentName} onChange={(event) => setInput((value) => ({ ...value, studentName: event.target.value }))} className="mt-1 w-full rounded-lg border p-2" /></label><label>접속번호<input aria-label="접속번호" inputMode="numeric" maxLength={4} value={input.accessCode} onChange={(event) => setInput((value) => ({ ...value, accessCode: event.target.value.replace(/\D/g, '') }))} placeholder="비우면 자동 생성" className="mt-1 w-full rounded-lg border p-2" /></label></div><div className="mt-3 flex gap-2"><button type="button" onClick={() => void submitStudent()} className="rounded-xl bg-indigo-600 px-4 py-2 font-bold text-white">{editingStudentId ? '학생 수정' : '학생 등록'}</button>{editingStudentId && <button type="button" onClick={() => { setEditingStudentId(null); setInput(emptyInput); }} className="rounded-xl bg-slate-100 px-4 py-2 font-bold">취소</button>}</div></section>
       <section className="mt-6 rounded-2xl border p-4"><h2 className="text-xl font-black">CSV 일괄 등록</h2><p className="mt-1 text-sm text-slate-500">헤더: grade,classNumber,studentName,accessCode (접속번호는 비워 둘 수 있음)</p><textarea aria-label="CSV 학생 목록" value={csv} onChange={(event) => setCsv(event.target.value)} rows={5} className="mt-3 w-full rounded-lg border p-3 font-mono text-sm" /><button type="button" onClick={() => void submitCsv()} className="mt-2 rounded-xl bg-violet-600 px-4 py-2 font-bold text-white">CSV 일괄 등록</button></section>
       {message && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 font-bold text-red-700">{message}</p>}
+      {bootstrapSubject && <section className="mt-4 rounded-2xl border-2 border-amber-200 bg-amber-50 p-4"><h2 className="font-black text-amber-900">관리자 등록이 필요합니다</h2><p className="mt-1 text-sm text-amber-800">아래 Google sub를 Render의 SCHOOL_TENANTS `initialAdminSubjects`에 추가한 뒤 재배포하세요.</p><label className="mt-3 block text-sm font-bold text-amber-900">관리자 등록용 Google sub<input aria-label="관리자 등록용 Google sub" readOnly value={bootstrapSubject} className="mt-1 w-full rounded-lg border border-amber-300 bg-white p-2 font-mono text-sm text-slate-800" /></label><button type="button" onClick={() => void copyBootstrapSubject()} className="mt-2 rounded-lg bg-amber-600 px-3 py-2 text-sm font-bold text-white">sub 복사</button>{subjectCopyMessage && <p className="mt-2 text-sm font-bold text-amber-900">{subjectCopyMessage}</p>}</section>}
       <section className="mt-6"><h2 className="text-xl font-black">학생 목록</h2>{loading ? <p className="py-6 text-slate-500">불러오는 중...</p> : visibleStudents.length === 0 ? <p className="py-6 text-slate-500">등록된 학생이 없습니다.</p> : <ul className="divide-y">{visibleStudents.map((student) => <li key={student.id} className="flex items-center justify-between py-3"><span><b>{student.studentName}</b> · {student.grade}학년 {student.classNumber}반</span><button type="button" onClick={() => startEdit(student)} className="rounded-lg bg-slate-100 px-3 py-1 font-bold">수정</button></li>)}</ul>}</section>
     </main>
   </div>;
