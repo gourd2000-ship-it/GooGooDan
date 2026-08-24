@@ -21,6 +21,24 @@ CREATE TABLE IF NOT EXISTS admins (
   UNIQUE (school_id, google_subject)
 );
 
+-- Preserve the pre-tenant student roster.  The legacy schema has no school_id
+-- or hashed access-code column, so CREATE TABLE IF NOT EXISTS would otherwise
+-- silently retain an incompatible table and make the later index creation fail.
+DO $$
+BEGIN
+  IF to_regclass('public.students') IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1
+       FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'students' AND column_name = 'school_id'
+     ) THEN
+    IF to_regclass('public.legacy_students_pre_tenant_auth') IS NOT NULL THEN
+      RAISE EXCEPTION 'legacy_students_pre_tenant_auth already exists; stop to preserve both student rosters';
+    END IF;
+    ALTER TABLE students RENAME TO legacy_students_pre_tenant_auth;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id UUID NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
