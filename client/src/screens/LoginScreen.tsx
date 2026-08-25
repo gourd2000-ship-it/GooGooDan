@@ -43,7 +43,7 @@ export default function LoginScreen() {
         <div className="flex justify-center mb-6 text-amber-500">
           <UserCircle size={80} />
         </div>
-        <h1 className="text-3xl font-black text-slate-800 mb-2">학년, 반, 접속번호를 입력해요</h1>
+        <h1 className="text-xl font-black text-slate-800 mb-2">학년, 반, 접속번호를 입력해요</h1>
         <p className="text-slate-500 mb-6">접속번호는 네 자리 숫자예요.</p>
 
         <div className="flex flex-col gap-4">

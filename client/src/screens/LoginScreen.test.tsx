@@ -15,6 +15,12 @@ describe('LoginScreen', () => {
     vi.unstubAllGlobals();
   });
 
+  it('uses a compact size for the grade, class, and access-code heading', () => {
+    render(<LoginScreen />);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('text-xl');
+  });
+
   it('submits a masked four-digit PIN with the selected grade and class', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
