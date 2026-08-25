@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PracticeScreen from './PracticeScreen';
 import { useStore } from '../store/useStore';
 
+let stopTrack: ReturnType<typeof vi.fn>;
+let fetchMock: ReturnType<typeof vi.fn>;
+
 class FakeMediaRecorder {
+  static current: FakeMediaRecorder | undefined;
   state: RecordingState = 'inactive';
   mimeType = 'audio/webm';
   ondataavailable: ((event: BlobEvent) => void) | null = null;
@@ -14,6 +18,7 @@ class FakeMediaRecorder {
 
   constructor(stream: MediaStream) {
     this.stream = stream;
+    FakeMediaRecorder.current = this;
   }
 
   start() {
@@ -30,6 +35,9 @@ class FakeMediaRecorder {
 describe('PracticeScreen', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    FakeMediaRecorder.current = undefined;
+    stopTrack = vi.fn();
+    fetchMock = vi.fn(() => new Promise(() => {}));
     useStore.getState().resetApp();
     useStore.setState({
       currentScreen: 'practice',
@@ -42,14 +50,11 @@ describe('PracticeScreen', () => {
     vi.stubGlobal('navigator', {
       mediaDevices: {
         getUserMedia: vi.fn().mockResolvedValue({
-          getTracks: () => [{ stop: vi.fn() }],
+          getTracks: () => [{ stop: stopTrack }],
         }),
       },
     });
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => JSON.stringify({ results: [], totalCorrect: 0, feedback: '채점 완료' }),
-    }));
+    vi.stubGlobal('fetch', fetchMock);
   });
 
   afterEach(() => {
@@ -57,7 +62,7 @@ describe('PracticeScreen', () => {
     vi.unstubAllGlobals();
   });
 
-  it('automatically stops recording and moves to grading after one minute', async () => {
+  it('stops the microphone and submits a 60-second recording for grading automatically', async () => {
     render(<PracticeScreen />);
 
     await act(async () => {
@@ -67,5 +72,10 @@ describe('PracticeScreen', () => {
     act(() => vi.advanceTimersByTime(60_000));
 
     expect(useStore.getState().currentScreen).toBe('loading');
+    expect(FakeMediaRecorder.current?.state).toBe('inactive');
+    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const request = fetchMock.mock.calls[0][1] as RequestInit;
+    expect((request.body as FormData).get('totalTime')).toBe('60000');
   });
 });

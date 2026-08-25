@@ -11,11 +11,12 @@ import ProfileScreen from './screens/ProfileScreen';
 import AdminPortal from './screens/AdminPortal';
 import { readScreenHistory } from './lib/screenHistory';
 
-function LoadingScreen() {
+function LoadingScreen({ timeLimitReached = false }: { timeLimitReached?: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-4">
       <div className="animate-spin text-5xl mb-6">🤔</div>
       <h2 className="text-2xl font-bold text-slate-700 animate-pulse">선생님이 채점하고 있어요...</h2>
+      {timeLimitReached && <p className="mt-3 text-lg font-bold text-amber-700">1분이 넘었어요. 아쉬워요!</p>}
     </div>
   );
 }
@@ -23,6 +24,7 @@ function LoadingScreen() {
 function StudentApp() {
   const currentScreen = useStore((state) => state.currentScreen);
   const sessionStatus = useStore((state) => state.sessionStatus);
+  const timeLimitReached = useStore((state) => state.timeLimitReached);
   const restoreSession = useStore((state) => state.restoreSession);
 
   useEffect(() => { void restoreSession(); }, [restoreSession]);
@@ -50,7 +52,7 @@ function StudentApp() {
       {currentScreen === 'home' && <HomeScreen />}
       {currentScreen === 'practice' && <PracticeScreen />}
       {currentScreen === 'tapPractice' && <TapPracticeScreen />}
-      {currentScreen === 'loading' && <LoadingScreen />}
+      {currentScreen === 'loading' && <LoadingScreen timeLimitReached={timeLimitReached} />}
       {currentScreen === 'result' && <ResultScreen />}
       {currentScreen === 'ranking' && <RankingScreen />}
       {currentScreen === 'profile' && <ProfileScreen />}

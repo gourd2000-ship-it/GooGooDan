@@ -97,6 +97,7 @@ export default function HomeScreen() {
     store.setTapEvaluationResult(null);
     store.setTapRecordStatus('idle');
     store.setTotalTime(0);
+    store.setTimeLimitReached(false);
     if (store.practiceType === 'tap') {
       store.setTapQuestions(buildTapQuestions(table, order, store.tapGameMode));
       store.setScreen('tapPractice');

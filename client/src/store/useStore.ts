@@ -55,6 +55,7 @@ interface AppState {
   tapEvaluationResult: TapEvaluationResult | null;
   tapRecordStatus: TapRecordStatus;
   totalTime: number;
+  timeLimitReached: boolean;
   setScreen: (screen: ScreenType) => void;
   setUserName: (name: string) => void;
   login: (input: StudentLoginInput) => Promise<void>;
@@ -76,6 +77,7 @@ interface AppState {
   setTapEvaluationResult: (result: TapEvaluationResult | null) => void;
   setTapRecordStatus: (status: TapRecordStatus) => void;
   setTotalTime: (time: number) => void;
+  setTimeLimitReached: (reached: boolean) => void;
   resetApp: () => void;
 }
 
@@ -99,6 +101,7 @@ export const useStore = create<AppState>((set) => ({
   tapEvaluationResult: null,
   tapRecordStatus: 'idle',
   totalTime: 0,
+  timeLimitReached: false,
   setScreen: (screen) => {
     pushScreenHistory(screen);
     set({ currentScreen: screen });
@@ -130,7 +133,7 @@ export const useStore = create<AppState>((set) => ({
         practiceType: 'speech', tapGameMode: 'answer', speechTable: 2, speechMode: 'sequential',
         tapTable: 2, tapMode: 'sequential', selectedTable: 2, mode: 'sequential',
         expectedQuestions: [], tapQuestions: [], evaluationResult: null, tapEvaluationResult: null,
-        tapRecordStatus: 'idle', totalTime: 0,
+        tapRecordStatus: 'idle', totalTime: 0, timeLimitReached: false,
       });
     }
   },
@@ -149,6 +152,7 @@ export const useStore = create<AppState>((set) => ({
   setTapEvaluationResult: (tapEvaluationResult) => set({ tapEvaluationResult }),
   setTapRecordStatus: (tapRecordStatus) => set({ tapRecordStatus }),
   setTotalTime: (totalTime) => set({ totalTime }),
+  setTimeLimitReached: (timeLimitReached) => set({ timeLimitReached }),
   resetApp: () => set((state) => ({
     currentScreen: state.userName ? 'home' : 'name',
     practiceType: 'speech',
@@ -165,5 +169,6 @@ export const useStore = create<AppState>((set) => ({
     tapEvaluationResult: null,
     tapRecordStatus: 'idle',
     totalTime: 0,
+    timeLimitReached: false,
   })),
 }));

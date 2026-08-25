@@ -23,7 +23,7 @@ function isEvaluationResult(value: unknown): value is EvaluationResult {
 }
 
 export default function PracticeScreen() {
-  const { userName, selectedTable, mode, expectedQuestions, setScreen, setEvaluationResult, setTotalTime } = useStore();
+  const { userName, selectedTable, mode, expectedQuestions, setScreen, setEvaluationResult, setTotalTime, setTimeLimitReached } = useStore();
   const [time, setTime] = useState(0);
   const timeRef = useRef(0);
   const startTimeRef = useRef<number>(0);
@@ -62,7 +62,7 @@ export default function PracticeScreen() {
     };
   }, [isRecording]);
 
-  const stopRecording = useCallback(() => {
+  const stopRecording = useCallback((reachedTimeLimit = false) => {
     setIsRecording(false);
     if (startTimeRef.current > 0) {
       const finalTime = Math.min(getCurrentTime() - startTimeRef.current, MAX_RECORDING_DURATION_MS);
@@ -70,11 +70,12 @@ export default function PracticeScreen() {
       setTime(finalTime);
     }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      setTimeLimitReached(reachedTimeLimit);
       setScreen('loading');
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
-  }, [setScreen]);
+  }, [setScreen, setTimeLimitReached]);
 
   useEffect(() => {
     if (!isRecording) return;
@@ -83,7 +84,7 @@ export default function PracticeScreen() {
       0,
       MAX_RECORDING_DURATION_MS - (getCurrentTime() - startTimeRef.current),
     );
-    const timeout = setTimeout(stopRecording, remainingDuration);
+    const timeout = setTimeout(() => stopRecording(true), remainingDuration);
 
     return () => clearTimeout(timeout);
   }, [isRecording, stopRecording]);
@@ -110,6 +111,7 @@ export default function PracticeScreen() {
       startTimeRef.current = getCurrentTime();
       timeRef.current = 0;
       setTime(0);
+      setTimeLimitReached(false);
       mediaRecorder.start();
       setIsRecording(true);
     } catch {

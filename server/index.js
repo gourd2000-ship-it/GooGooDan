@@ -15,6 +15,7 @@ const { createCorsOptions, createSessionCookieOptions } = require('./httpSecurit
 const { createPgStudentAuthRepository, createStudentAuthHttpHandlers, createStudentAuthService } = require('./auth');
 const { createTenantMiddleware, parseTenantConfiguration } = require('./tenant');
 const { createGeminiClient, evaluateAudio } = require('./gemini');
+const { MAX_AUDIO_DURATION_SECONDS, validateAudioDuration } = require('./audioDuration');
 const {
   ALLOWED_AUDIO_MIME_TYPES,
   MAX_AUDIO_SIZE_BYTES,
@@ -195,6 +196,10 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
       if (!audioCheck.valid) {
         return res.status(400).json({ error: audioCheck.reason });
       }
+      const durationCheck = await validateAudioDuration(req.file);
+      if (!durationCheck.valid) {
+        return res.status(400).json({ error: durationCheck.reason });
+      }
 
     const { table, mode, expectedAnswers, totalTime } = req.body;
 
@@ -213,7 +218,7 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
     const cleanName = req.student.studentName;
 
     const parsedTotalTime = Number(totalTime);
-    if (!Number.isInteger(parsedTotalTime) || parsedTotalTime < 0) {
+    if (!Number.isInteger(parsedTotalTime) || parsedTotalTime < 0 || parsedTotalTime > MAX_AUDIO_DURATION_SECONDS * 1000) {
       return res.status(400).json({ error: '유효하지 않은 소요 시간입니다.' });
     }
 
