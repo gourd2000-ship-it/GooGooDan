@@ -46,3 +46,27 @@ test('validateAudioDuration: audio longer than one minute is rejected', async ()
   assert.strictEqual(result.valid, false);
   assert.match(result.reason, /1분/);
 });
+
+test('validateAudioDuration: uses the client-recorded duration when a valid short recording has no readable metadata', async () => {
+  const result = await validateAudioDuration(
+    { buffer: Buffer.from('not-a-recognized-audio-container'), size: 32, mimetype: 'audio/mp4', originalname: 'recording.m4a' },
+    60_000,
+  );
+
+  assert.strictEqual(result.valid, true);
+  assert.strictEqual(result.durationSeconds, MAX_AUDIO_DURATION_SECONDS);
+  assert.strictEqual(result.durationSource, 'reported');
+  assert.strictEqual(result.diagnostic.event, 'audio_duration_metadata_unavailable');
+  assert.strictEqual(result.diagnostic.mimeType, 'audio/mp4');
+});
+
+test('validateAudioDuration: rejects unreadable audio when its reported duration exceeds one minute', async () => {
+  const result = await validateAudioDuration(
+    { buffer: Buffer.from('not-a-recognized-audio-container'), size: 32, mimetype: 'audio/mp4' },
+    60_001,
+  );
+
+  assert.strictEqual(result.valid, false);
+  assert.match(result.reason, /오디오 길이/);
+  assert.strictEqual(result.diagnostic.event, 'audio_duration_metadata_unavailable');
+});

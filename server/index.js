@@ -50,6 +50,16 @@ const upload = multer({
   },
 });
 
+function logAudioDurationDiagnostic(req, diagnostic, outcome) {
+  if (!diagnostic) return;
+  const userAgent = req.get('user-agent');
+  console.warn('[audio-duration-diagnostic]', JSON.stringify({
+    ...diagnostic,
+    outcome,
+    userAgent: userAgent ? userAgent.slice(0, 300) : null,
+  }));
+}
+
 const DATABASE_URL = process.env.DATABASE_URL;
 
 function getGenAIClient() {
@@ -196,12 +206,21 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
       if (!audioCheck.valid) {
         return res.status(400).json({ error: audioCheck.reason });
       }
-      const durationCheck = await validateAudioDuration(req.file);
-      if (!durationCheck.valid) {
-        return res.status(400).json({ error: durationCheck.reason });
-      }
 
     const { table, mode, expectedAnswers, totalTime } = req.body;
+
+    const parsedTotalTime = Number(totalTime);
+    if (!Number.isInteger(parsedTotalTime) || parsedTotalTime < 0 || parsedTotalTime > MAX_AUDIO_DURATION_SECONDS * 1000) {
+      return res.status(400).json({ error: '유효하지 않은 소요 시간입니다.' });
+    }
+
+    const durationCheck = await validateAudioDuration(req.file, parsedTotalTime);
+    if (durationCheck.diagnostic) {
+      logAudioDurationDiagnostic(req, durationCheck.diagnostic, durationCheck.valid ? 'accepted_with_reported_duration' : 'rejected');
+    }
+    if (!durationCheck.valid) {
+      return res.status(400).json({ error: durationCheck.reason });
+    }
 
     // 입력값 검증 (보안 강화 및 SQL injection/XSS 사전 예방)
     const parsedTable = Number(table);
@@ -216,11 +235,6 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
 
     // 이름 검증: 특수문자, 스크립트 코드 필터링
     const cleanName = req.student.studentName;
-
-    const parsedTotalTime = Number(totalTime);
-    if (!Number.isInteger(parsedTotalTime) || parsedTotalTime < 0 || parsedTotalTime > MAX_AUDIO_DURATION_SECONDS * 1000) {
-      return res.status(400).json({ error: '유효하지 않은 소요 시간입니다.' });
-    }
 
     const safeExpectedAnswers = validateExpectedQuestions(parsedTable, mode, expectedAnswers);
     if (!safeExpectedAnswers) {

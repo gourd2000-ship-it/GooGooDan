@@ -6,6 +6,23 @@ import { API_URL } from '../config';
 
 const getCurrentTime = () => Date.now();
 const MAX_RECORDING_DURATION_MS = 60_000;
+const PREFERRED_AUDIO_MIME_TYPES = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/ogg'];
+
+function getPreferredAudioMimeType() {
+  return PREFERRED_AUDIO_MIME_TYPES.find((mimeType) => MediaRecorder.isTypeSupported(mimeType));
+}
+
+function getAudioFilename(mimeType: string) {
+  const mimeTypeWithoutCodecs = mimeType.split(';', 1)[0];
+  const extensionByMimeType: Record<string, string> = {
+    'audio/webm': 'webm',
+    'audio/mp4': 'm4a',
+    'audio/ogg': 'ogg',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+  };
+  return `recording.${extensionByMimeType[mimeTypeWithoutCodecs] || 'webm'}`;
+}
 
 function getApiErrorMessage(value: unknown, fallback: string) {
   if (value && typeof value === 'object' && 'error' in value && typeof value.error === 'string') {
@@ -92,7 +109,10 @@ export default function PracticeScreen() {
   const handleStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const preferredAudioMimeType = getPreferredAudioMimeType();
+      const mediaRecorder = preferredAudioMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredAudioMimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -128,7 +148,7 @@ export default function PracticeScreen() {
     const finalElapsed = timeRef.current > 0 ? timeRef.current : time;
 
     const formData = new FormData();
-    formData.append('audio', blob, 'recording.webm');
+    formData.append('audio', blob, getAudioFilename(blob.type));
     formData.append('table', String(selectedTable));
     formData.append('mode', mode);
     formData.append('expectedAnswers', JSON.stringify(expectedQuestions));
