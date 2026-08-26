@@ -101,6 +101,36 @@ test('normalizeEvaluation: AI가 누락하거나 부정확한 문제·총점을 
   assert.strictEqual(normalized.totalCorrect, 1);
 });
 
+test('normalizeEvaluation: AI가 정답이라고 해도 알아들을 수 없는 발화는 오답으로 처리해야 함', () => {
+  const normalized = normalizeEvaluation({
+    results: [{ spoken: '음... 어...', isCorrect: true }],
+    totalCorrect: 1,
+    feedback: '잘했어요!',
+  }, ['4 x 1']);
+
+  assert.deepStrictEqual(normalized.results[0], {
+    question: '4 x 1',
+    expected: '4',
+    spoken: '음... 어...',
+    isCorrect: false,
+  });
+  assert.strictEqual(normalized.totalCorrect, 0);
+});
+
+test('normalizeEvaluation: 명확한 한글 숫자 발화만 해당 정답으로 인정해야 함', () => {
+  const normalized = normalizeEvaluation({
+    results: [
+      { spoken: '사', isCorrect: true },
+      { spoken: '5', isCorrect: true },
+    ],
+    feedback: '잘했어요!',
+  }, ['4 x 1', '3 x 2']);
+
+  assert.strictEqual(normalized.results[0].isCorrect, true);
+  assert.strictEqual(normalized.results[1].isCorrect, false);
+  assert.strictEqual(normalized.totalCorrect, 1);
+});
+
 test('validateAudioFile: 오디오 형식과 파일 크기를 모두 제한해야 함', () => {
   assert.strictEqual(validateAudioFile(null).valid, false);
   assert.strictEqual(validateAudioFile({ size: 0 }).valid, false);

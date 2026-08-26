@@ -251,6 +251,7 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
 
     // 프롬프트(명령어) 작성
     const prompt = `
+    STRICT GRADING OVERRIDE: Mark an answer correct only when the spoken number is clearly intelligible and exactly matches the expected answer. Do not infer, guess, or fill in an answer from the multiplication sequence. If speech is mumbled, incomplete, masked by noise, ambiguous, or cannot be transcribed confidently, set spoken to an empty string and isCorrect to false. This overrides any instruction to be lenient about noise or pronunciation.
     당신은 초등학교 구구단 시험을 채점하는 선생님입니다.
     사용자가 ${parsedTable}단 구구단을 말한 음성 파일입니다.
     

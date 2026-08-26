@@ -109,6 +109,27 @@ function expectedAnswerForQuestion(question) {
   return match ? String(Number(match[1]) * Number(match[2])) : '';
 }
 
+const KOREAN_DIGITS = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+
+function numberToKorean(number) {
+  if (!Number.isInteger(number) || number < 1 || number > 99) return '';
+  if (number < 10) return KOREAN_DIGITS[number];
+
+  const tens = Math.floor(number / 10);
+  const ones = number % 10;
+  return `${tens === 1 ? '십' : `${KOREAN_DIGITS[tens]}십`}${KOREAN_DIGITS[ones]}`;
+}
+
+function isClearlySpokenAnswer(spoken, expected) {
+  if (typeof spoken !== 'string' || !/^\d+$/.test(expected)) return false;
+
+  const normalized = spoken.trim().replace(/[.!?…]+$/, '').replace(/\s+/g, '');
+  if (!normalized) return false;
+  if (/^(?:0|[1-9]\d*)$/.test(normalized)) return normalized === expected;
+
+  return normalized === numberToKorean(Number(expected));
+}
+
 /**
  * 모델 응답을 신뢰 가능한 화면/저장 형식으로 보정합니다. 모델이 보낸 문제와
  * totalCorrect는 사용하지 않고, 서버에서 검증한 문제 목록과 결과로 재계산합니다.
@@ -117,11 +138,13 @@ function normalizeEvaluation(evaluation, expectedQuestions) {
   const rawResults = Array.isArray(evaluation?.results) ? evaluation.results : [];
   const results = expectedQuestions.map((question, index) => {
     const rawResult = rawResults[index];
+    const expected = expectedAnswerForQuestion(question);
+    const spoken = typeof rawResult?.spoken === 'string' ? rawResult.spoken.trim().slice(0, 100) : '';
     return {
       question,
-      expected: expectedAnswerForQuestion(question),
-      spoken: typeof rawResult?.spoken === 'string' ? rawResult.spoken.trim().slice(0, 100) : '',
-      isCorrect: rawResult?.isCorrect === true,
+      expected,
+      spoken,
+      isCorrect: rawResult?.isCorrect === true && isClearlySpokenAnswer(spoken, expected),
     };
   });
   const totalCorrect = results.filter((result) => result.isCorrect).length;
@@ -190,6 +213,7 @@ module.exports = {
   calculateScore,
   getAllowedOrigins,
   getGeminiApiKey,
+  isClearlySpokenAnswer,
   normalizeEvaluation,
   parseGeminiJson,
   validateAudioFile,
