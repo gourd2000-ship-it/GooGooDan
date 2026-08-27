@@ -117,6 +117,34 @@ test('normalizeEvaluation: AI가 정답이라고 해도 알아들을 수 없는 
   assert.strictEqual(normalized.totalCorrect, 0);
 });
 
+test('normalizeEvaluation: 명확한 답에 자연스러운 어미나 답변 표현이 붙어도 정답으로 인정해야 함', () => {
+  const normalized = normalizeEvaluation({
+    results: [
+      { spoken: '정답은 사입니다.', isCorrect: true },
+      { spoken: '6번', isCorrect: true },
+    ],
+    feedback: '잘했어요!',
+  }, ['4 x 1', '3 x 2']);
+
+  assert.strictEqual(normalized.results[0].isCorrect, true);
+  assert.strictEqual(normalized.results[1].isCorrect, true);
+  assert.strictEqual(normalized.totalCorrect, 2);
+});
+
+test('normalizeEvaluation: 식과 정답을 함께 또렷하게 말해도 정답으로 인정해야 함', () => {
+  const normalized = normalizeEvaluation({
+    results: [
+      { spoken: '이 삼 육', isCorrect: true },
+      { spoken: '이 삼은 육', isCorrect: true },
+    ],
+    feedback: '잘했어요!',
+  }, ['2 x 3', '2 x 3']);
+
+  assert.strictEqual(normalized.results[0].isCorrect, true);
+  assert.strictEqual(normalized.results[1].isCorrect, true);
+  assert.strictEqual(normalized.totalCorrect, 2);
+});
+
 test('normalizeEvaluation: 명확한 한글 숫자 발화만 해당 정답으로 인정해야 함', () => {
   const normalized = normalizeEvaluation({
     results: [

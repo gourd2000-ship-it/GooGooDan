@@ -251,14 +251,15 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
 
     // 프롬프트(명령어) 작성
     const prompt = `
-    STRICT GRADING OVERRIDE: Mark an answer correct only when the spoken number is clearly intelligible and exactly matches the expected answer. Do not infer, guess, or fill in an answer from the multiplication sequence. If speech is mumbled, incomplete, masked by noise, ambiguous, or cannot be transcribed confidently, set spoken to an empty string and isCorrect to false. This overrides any instruction to be lenient about noise or pronunciation.
     당신은 초등학교 구구단 시험을 채점하는 선생님입니다.
     사용자가 ${parsedTable}단 구구단을 말한 음성 파일입니다.
     
     [채점 지침]
-    1. 배경 소음이나 발음이 부정확해도 문맥상 구구단 정답이라면 정답으로 인정해주세요.
-    2. 기대하는 정답 순서는 다음과 같습니다: ${JSON.stringify(safeExpectedAnswers)}
-    3. 사용자가 숫자를 한국어로 말하거나(이, 사, 육...) 아라비아 숫자로 말해도 모두 인정합니다.
+    1. 숫자가 명확히 들리고 해당 문제의 답과 일치하면 정답으로 인정해주세요. 약간의 배경 소음, 아이의 발음 차이, 조사나 어미(예: "사입니다", "4번")만으로 오답 처리하지 마세요.
+    2. 음성이 알아듣기 어렵거나 정답이라고 판단할 근거가 부족하면 오답으로 처리하세요. 구구단의 순서만으로 답을 추측하거나 채워 넣지 마세요.
+    3. 기대하는 정답 순서는 다음과 같습니다: ${JSON.stringify(safeExpectedAnswers)}
+    4. 사용자가 숫자를 한국어로 말하거나(이, 사, 육...) 아라비아 숫자로 말해도 모두 인정합니다.
+    5. 문제의 식과 정답을 함께 또렷하게 말한 경우도 정답입니다. 예를 들어 2 x 3의 답을 "이 삼 육" 또는 "이 삼은 육"이라고 말하면 정답으로 처리하세요.
     
     음성을 분석해서 반드시 아래의 JSON 형식으로만 응답해주세요. 설명이나 마크다운 기호 없이 순수 JSON만 보내주세요.
     

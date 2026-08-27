@@ -120,14 +120,36 @@ function numberToKorean(number) {
   return `${tens === 1 ? '십' : `${KOREAN_DIGITS[tens]}십`}${KOREAN_DIGITS[ones]}`;
 }
 
-function isClearlySpokenAnswer(spoken, expected) {
+function isClearlySpokenAnswer(spoken, expected, question = '') {
   if (typeof spoken !== 'string' || !/^\d+$/.test(expected)) return false;
 
   const normalized = spoken.trim().replace(/[.!?…]+$/, '').replace(/\s+/g, '');
   if (!normalized) return false;
-  if (/^(?:0|[1-9]\d*)$/.test(normalized)) return normalized === expected;
 
-  return normalized === numberToKorean(Number(expected));
+  const answers = [expected, numberToKorean(Number(expected))].filter(Boolean);
+  const prefixes = ['', '정답은', '답은'];
+  const suffixes = ['', '번', '입니다', '이에요', '예요'];
+
+  const isAnswerOnly = answers.some((answer) => prefixes.some((prefix) => suffixes.some(
+    (suffix) => normalized === `${prefix}${answer}${suffix}`,
+  )));
+  if (isAnswerOnly) return true;
+
+  const questionMatch = /^(\d+) x (\d+)$/.exec(question);
+  if (!questionMatch) return false;
+
+  const [left, right] = questionMatch.slice(1);
+  const leftKorean = numberToKorean(Number(left));
+  const rightKorean = numberToKorean(Number(right));
+  const answerKorean = numberToKorean(Number(expected));
+  const completeExpressions = [
+    `${leftKorean}${rightKorean}${answerKorean}`,
+    `${leftKorean}${rightKorean}은${answerKorean}`,
+    `${left}${right}${expected}`,
+    `${left}${right}은${expected}`,
+  ];
+
+  return completeExpressions.includes(normalized);
 }
 
 /**
@@ -144,7 +166,7 @@ function normalizeEvaluation(evaluation, expectedQuestions) {
       question,
       expected,
       spoken,
-      isCorrect: rawResult?.isCorrect === true && isClearlySpokenAnswer(spoken, expected),
+      isCorrect: rawResult?.isCorrect === true && isClearlySpokenAnswer(spoken, expected, question),
     };
   });
   const totalCorrect = results.filter((result) => result.isCorrect).length;
