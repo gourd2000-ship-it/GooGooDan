@@ -1,3 +1,9 @@
+const MIN_HALL_OF_FAME_TIME_MS = 3_000;
+
+function isHallOfFameEligible(totalTimeMs) {
+  return Number.isInteger(totalTimeMs) && totalTimeMs > MIN_HALL_OF_FAME_TIME_MS;
+}
+
 function compareRecords(left, right) {
   return right.score - left.score || left.totalTimeMs - right.totalTimeMs;
 }
@@ -34,4 +40,4 @@ function summarizeProgress(records) {
   })).sort((a, b) => a.grade - b.grade || a.classNumber - b.classNumber || a.studentName.localeCompare(b.studentName));
 }
 
-module.exports = { selectBestRecords, summarizeProgress };
+module.exports = { MIN_HALL_OF_FAME_TIME_MS, isHallOfFameEligible, selectBestRecords, summarizeProgress };

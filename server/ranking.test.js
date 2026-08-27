@@ -1,6 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { selectBestRecords, summarizeProgress } = require('./ranking');
+const { isHallOfFameEligible, selectBestRecords, summarizeProgress } = require('./ranking');
+
+test('isHallOfFameEligible excludes only records completed in three seconds or less', () => {
+  assert.equal(isHallOfFameEligible(3_000), false);
+  assert.equal(isHallOfFameEligible(3_001), true);
+  assert.equal(isHallOfFameEligible(9_000), true);
+});
 
 test('selectBestRecords keeps one record per student by score then shortest time', () => {
   const records = [

@@ -16,6 +16,7 @@ const { createPgStudentAuthRepository, createStudentAuthHttpHandlers, createStud
 const { createTenantMiddleware, parseTenantConfiguration } = require('./tenant');
 const { createGeminiClient, evaluateAudio } = require('./gemini');
 const { MAX_AUDIO_DURATION_SECONDS, validateAudioDuration } = require('./audioDuration');
+const { MIN_HALL_OF_FAME_TIME_MS, isHallOfFameEligible } = require('./ranking');
 const {
   ALLOWED_AUDIO_MIME_TYPES,
   MAX_AUDIO_SIZE_BYTES,
@@ -155,7 +156,7 @@ app.get('/api/ranking', requireTenant, async (req, res) => {
     }
     if (!pool) return res.status(503).json({ error: 'Ranking data is unavailable' });
 
-    let query = 'SELECT DISTINCT ON (r.student_id) s.student_name, r.table_number, r.mode, r.score, r.total_time_ms FROM records r JOIN students s ON s.id = r.student_id WHERE r.school_id = $1 AND r.student_id IS NOT NULL AND r.practice_type = $2';
+    let query = `SELECT DISTINCT ON (r.student_id) s.student_name, r.table_number, r.mode, r.score, r.total_time_ms FROM records r JOIN students s ON s.id = r.student_id WHERE r.school_id = $1 AND r.student_id IS NOT NULL AND r.practice_type = $2 AND r.total_time_ms > ${MIN_HALL_OF_FAME_TIME_MS}`;
     const params = [req.tenant.id, practiceType];
     if (parsedTable !== null) {
       query += ' AND r.table_number = $3';
@@ -164,7 +165,7 @@ app.get('/api/ranking', requireTenant, async (req, res) => {
     query += ' ORDER BY r.student_id, r.score DESC, r.total_time_ms ASC';
 
     const { rows } = await pool.query(query, params);
-    res.json(rows.sort((left, right) => right.score - left.score || left.total_time_ms - right.total_time_ms).slice(0, 10));
+    res.json(rows.filter((row) => isHallOfFameEligible(row.total_time_ms)).sort((left, right) => right.score - left.score || left.total_time_ms - right.total_time_ms).slice(0, 10));
   } catch (error) {
     console.error('랭킹 조회 오류:', error);
     res.status(500).json({ error: '랭킹을 불러오지 못했습니다.' });
