@@ -42,4 +42,11 @@ describe('HomeScreen', () => {
     expect(useStore.getState().challengeMode).toBe('answer-tap');
     expect(useStore.getState().currentScreen).toBe('challengeSetup');
   });
+
+  it('places the challenge below the two side-by-side core practice cards on desktop', () => {
+    render(<HomeScreen />);
+
+    expect(screen.getByTestId('home-practice-layout')).toHaveClass('md:grid-cols-2');
+    expect(screen.getByTestId('challenge-card')).toHaveClass('md:col-span-2');
+  });
 });

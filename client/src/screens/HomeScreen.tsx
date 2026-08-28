@@ -96,7 +96,7 @@ function ChallengeCard() {
   const { challengeMode, setChallengeMode, setScreen } = useStore();
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border-2 border-amber-200 bg-amber-50 p-5 text-left shadow-sm">
+    <section data-testid="challenge-card" className="flex flex-col rounded-2xl border-2 border-amber-200 bg-amber-50 p-5 text-left shadow-sm md:col-span-2">
       <div>
         <h2 className="text-2xl font-black text-amber-800">구구단 챌린지</h2>
         <p className="mt-1 text-sm font-medium text-amber-700">1단부터 9단까지 섞어서 도전해요.</p>
@@ -147,13 +147,11 @@ export default function HomeScreen() {
       <main className="mt-16 w-full max-w-4xl rounded-3xl border-4 border-blue-100 bg-white p-6 shadow-xl sm:p-8">
         <h1 className="mb-2 text-center text-4xl font-black text-blue-600">구구단 연습!</h1>
         <p className="mb-6 text-center font-medium text-slate-500">원하는 학습 방법을 하나 골라 주세요.</p>
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="space-y-5">
-            <PracticeTypeCard type="speech" title="말하는 구구단" isActive={store.practiceType === 'speech'} table={store.speechTable} order={store.speechMode} tapGameMode={store.tapGameMode}
-              onSelect={() => store.setPracticeType('speech')} onTableChange={store.setSpeechTable} onOrderChange={store.setSpeechMode} onTapGameModeChange={store.setTapGameMode} />
-            <PracticeTypeCard type="tap" title="누르는 구구단" isActive={store.practiceType === 'tap'} table={store.tapTable} order={store.tapMode} tapGameMode={store.tapGameMode}
-              onSelect={() => store.setPracticeType('tap')} onTableChange={store.setTapTable} onOrderChange={store.setTapMode} onTapGameModeChange={store.setTapGameMode} />
-          </div>
+        <div data-testid="home-practice-layout" className="grid gap-5 md:grid-cols-2">
+          <PracticeTypeCard type="speech" title="말하는 구구단" isActive={store.practiceType === 'speech'} table={store.speechTable} order={store.speechMode} tapGameMode={store.tapGameMode}
+            onSelect={() => store.setPracticeType('speech')} onTableChange={store.setSpeechTable} onOrderChange={store.setSpeechMode} onTapGameModeChange={store.setTapGameMode} />
+          <PracticeTypeCard type="tap" title="누르는 구구단" isActive={store.practiceType === 'tap'} table={store.tapTable} order={store.tapMode} tapGameMode={store.tapGameMode}
+            onSelect={() => store.setPracticeType('tap')} onTableChange={store.setTapTable} onOrderChange={store.setTapMode} onTapGameModeChange={store.setTapGameMode} />
           <ChallengeCard />
         </div>
         <button type="button" onClick={handleStart} className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-2xl font-bold text-white shadow-lg transition-transform hover:scale-[1.02] hover:bg-blue-700 active:scale-[0.98]">
