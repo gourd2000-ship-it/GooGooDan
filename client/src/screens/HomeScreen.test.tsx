@@ -49,4 +49,10 @@ describe('HomeScreen', () => {
     expect(screen.getByTestId('home-practice-layout')).toHaveClass('md:grid-cols-2');
     expect(screen.getByTestId('challenge-card')).toHaveClass('md:col-span-2');
   });
+
+  it('keeps a consistent gap above the challenge start button', () => {
+    render(<HomeScreen />);
+
+    expect(screen.getByRole('button', { name: '도전하기' })).toHaveClass('mt-6');
+  });
 });

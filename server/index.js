@@ -17,6 +17,7 @@ const { createTenantMiddleware, parseTenantConfiguration } = require('./tenant')
 const { createGeminiClient, evaluateAudio } = require('./gemini');
 const { MAX_AUDIO_DURATION_SECONDS, validateAudioDuration } = require('./audioDuration');
 const { MIN_HALL_OF_FAME_TIME_MS, isHallOfFameEligible } = require('./ranking');
+const { parseChallengeRankingRequest, validateChallengeRecord } = require('./challengeRanking');
 const {
   ALLOWED_AUDIO_MIME_TYPES,
   MAX_AUDIO_SIZE_BYTES,
@@ -171,6 +172,53 @@ app.get('/api/ranking', requireTenant, async (req, res) => {
   } catch (error) {
     console.error('랭킹 조회 오류:', error);
     res.status(500).json({ error: '랭킹을 불러오지 못했습니다.' });
+  }
+});
+
+app.get('/api/challenge/ranking', requireTenant, async (req, res) => {
+  const group = parseChallengeRankingRequest(req.query);
+  if (!group) {
+    return res.status(400).json({ error: 'Invalid challenge ranking group' });
+  }
+  if (!pool) return res.status(503).json({ error: 'Challenge ranking data is unavailable' });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT ON (c.student_id)
+        s.student_name, c.question_count, c.challenge_mode, c.total_correct, c.star_count, c.total_time_ms
+      FROM challenge_records c
+      JOIN students s ON s.id = c.student_id
+      WHERE c.school_id = $1 AND c.question_count = $2 AND c.challenge_mode = $3
+      ORDER BY c.student_id, c.total_correct DESC, c.total_time_ms ASC`,
+      [req.tenant.id, group.questionCount, group.challengeMode],
+    );
+    rows.sort((left, right) => right.total_correct - left.total_correct || left.total_time_ms - right.total_time_ms);
+    return res.json(rows.slice(0, 10));
+  } catch (error) {
+    console.error('Challenge ranking lookup failed:', error);
+    return res.status(500).json({ error: 'Challenge ranking could not be loaded' });
+  }
+});
+
+app.post('/api/challenge/record', requireTenant, requireStudent, async (req, res) => {
+  const validation = validateChallengeRecord(req.body);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.reason });
+  }
+  if (!pool) return res.status(503).json({ error: 'Challenge record storage is unavailable' });
+
+  const record = validation.value;
+  try {
+    await pool.query(
+      `INSERT INTO challenge_records
+        (school_id, student_id, question_count, challenge_mode, total_correct, total_time_ms, star_count)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [req.tenant.id, req.student.id, record.questionCount, record.challengeMode, record.totalCorrect, record.totalTime, record.starCount],
+    );
+    return res.status(201).json({ saved: true });
+  } catch (error) {
+    console.error('Challenge record storage failed:', error);
+    return res.status(500).json({ error: 'Challenge record could not be saved' });
   }
 });
 

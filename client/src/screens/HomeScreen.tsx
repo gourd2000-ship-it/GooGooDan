@@ -110,7 +110,7 @@ function ChallengeCard() {
         ))}
       </div>
       <button type="button" disabled={!challengeMode} onClick={() => setScreen('challengeSetup')}
-        className="mt-auto w-full rounded-2xl bg-amber-600 py-4 text-xl font-black text-white shadow-lg transition-transform hover:scale-[1.02] hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-amber-200 disabled:text-amber-500 disabled:shadow-none">
+        className="mt-6 w-full rounded-2xl bg-amber-600 py-4 text-xl font-black text-white shadow-lg transition-transform hover:scale-[1.02] hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-amber-200 disabled:text-amber-500 disabled:shadow-none">
         도전하기
       </button>
     </section>

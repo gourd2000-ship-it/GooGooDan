@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState } from 'react';
-import { buildChallengeTapQuestions } from '../lib/practice';
+import { buildChallengeTapQuestions, calculateChallengeStars } from '../lib/practice';
+import { saveChallengeRecord } from '../lib/challengeRanking';
+import { API_URL } from '../config';
 import { useStore } from '../store/useStore';
 
 export default function ChallengeTapScreen() {
   const {
-    challengeMode, challengeQuestions, setChallengeEvaluationResult,
+    challengeMode, challengeQuestionCount, challengeQuestions, setChallengeEvaluationResult,
     setScreen, setTotalTime,
   } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -34,12 +36,22 @@ export default function ChallengeTapScreen() {
       return;
     }
     const totalTime = Date.now() - startedAt.current;
+    const totalCorrect = nextAnswers.filter((answer) => answer.isCorrect).length;
     setTotalTime(totalTime);
     setChallengeEvaluationResult({
       results: nextAnswers,
-      totalCorrect: nextAnswers.filter((answer) => answer.isCorrect).length,
+      totalCorrect,
       feedback: '챌린지를 끝까지 풀었어요! 결과를 확인해 볼까요?',
     });
+    if (challengeQuestions.length === challengeQuestionCount) {
+      void saveChallengeRecord(API_URL, {
+        questionCount: challengeQuestionCount,
+        challengeMode,
+        totalCorrect,
+        totalTime,
+        starCount: calculateChallengeStars(totalCorrect, challengeQuestions.length),
+      }).catch(() => undefined);
+    }
     setScreen('challengeResult');
   };
 

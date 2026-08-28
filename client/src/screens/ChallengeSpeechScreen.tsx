@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Square } from 'lucide-react';
 import { API_URL } from '../config';
+import { saveChallengeRecord } from '../lib/challengeRanking';
+import { calculateChallengeStars } from '../lib/practice';
 import { useStore } from '../store/useStore';
 
 const MAX_RECORDING_DURATION_MS = 60_000;
@@ -13,7 +15,7 @@ function audioFilename(mimeType: string) {
 
 export default function ChallengeSpeechScreen() {
   const {
-    challengeMode, challengeQuestions, setChallengeEvaluationResult,
+    challengeMode, challengeQuestionCount, challengeQuestions, setChallengeEvaluationResult,
     setScreen, setTotalTime, setTimeLimitReached,
   } = useStore();
   const [recording, setRecording] = useState(false);
@@ -49,6 +51,15 @@ export default function ChallengeSpeechScreen() {
         totalCorrect: data.totalCorrect,
         feedback: data.feedback || '결과를 확인해요.',
       });
+      if (challengeQuestions.length === challengeQuestionCount) {
+        void saveChallengeRecord(API_URL, {
+          questionCount: challengeQuestionCount,
+          challengeMode,
+          totalCorrect: data.totalCorrect,
+          totalTime,
+          starCount: calculateChallengeStars(data.totalCorrect, challengeQuestions.length),
+        }).catch(() => undefined);
+      }
       setScreen('challengeResult');
     } catch {
       setScreen('challengeSpeech');
