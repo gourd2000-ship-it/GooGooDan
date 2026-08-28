@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import HomeScreen from './HomeScreen';
 import { useStore } from '../store/useStore';
 
 describe('HomeScreen', () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
     useStore.getState().resetApp();
     useStore.setState({ currentScreen: 'home', userName: '테스트' });
@@ -26,5 +28,18 @@ describe('HomeScreen', () => {
     expect(useStore.getState().selectedTable).toBe(3);
     expect(useStore.getState().currentScreen).toBe('tapPractice');
     expect(useStore.getState().tapQuestions).toHaveLength(10);
+  });
+
+  it('starts challenge setup only after selecting one of the four fixed challenge modes', () => {
+    render(<HomeScreen />);
+
+    const challengeButton = screen.getByRole('button', { name: '도전하기' });
+    expect(challengeButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '답 누르기' }));
+    fireEvent.click(challengeButton);
+
+    expect(useStore.getState().challengeMode).toBe('answer-tap');
+    expect(useStore.getState().currentScreen).toBe('challengeSetup');
   });
 });

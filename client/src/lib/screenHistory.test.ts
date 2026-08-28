@@ -8,6 +8,8 @@ describe('student screen history', () => {
     expect(readScreenHistory(window.history.state)).toBe('home');
     pushScreenHistory('ranking');
     expect(readScreenHistory(window.history.state)).toBe('ranking');
+    pushScreenHistory('challengeSetup');
+    expect(readScreenHistory(window.history.state)).toBe('challengeSetup');
   });
 
   it('rejects unrecognized browser history state', () => {

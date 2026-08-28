@@ -2,6 +2,15 @@ export type PracticeOrder = 'sequential' | 'random' | 'reverse';
 export type PracticeType = 'speech' | 'tap';
 export type TapGameMode = 'answer' | 'expression' | 'mixed';
 export type TapQuestionKind = Exclude<TapGameMode, 'mixed'>;
+export type ChallengeQuestionCount = 20 | 25 | 30;
+export type ChallengeMode = 'answer-speech' | 'answer-tap' | 'expression-speech' | 'expression-tap';
+
+export interface ChallengeQuestion {
+  left: number;
+  right: number;
+  expression: string;
+  answer: number;
+}
 
 export interface TapQuestion {
   expression: string;
@@ -14,6 +23,7 @@ export interface TapQuestion {
 type RandomSource = () => number;
 
 const multipliers = Array.from({ length: 10 }, (_, index) => index + 1);
+const challengeFactors = Array.from({ length: 9 }, (_, index) => index + 1);
 
 function shuffle<T>(items: readonly T[], random: RandomSource): T[] {
   const shuffled = [...items];
@@ -95,4 +105,71 @@ export function buildTapQuestions(
 export function calculateScore(totalCorrect: number, order: PracticeOrder): number {
   const multiplier = order === 'reverse' ? 12 : order === 'random' ? 20 : 10;
   return totalCorrect * multiplier;
+}
+
+function isChallengeQuestionCount(value: number): value is ChallengeQuestionCount {
+  return value === 20 || value === 25 || value === 30;
+}
+
+function allChallengeQuestions(): ChallengeQuestion[] {
+  return challengeFactors.flatMap((left) => challengeFactors.map((right) => ({
+    left,
+    right,
+    expression: `${left} x ${right}`,
+    answer: left * right,
+  })));
+}
+
+export function createChallengeQuestions(
+  questionCount: ChallengeQuestionCount,
+  random: RandomSource = Math.random,
+): ChallengeQuestion[] {
+  if (!isChallengeQuestionCount(questionCount)) {
+    throw new Error('Challenge question count must be 20, 25, or 30.');
+  }
+  return shuffle(allChallengeQuestions(), random).slice(0, questionCount);
+}
+
+export function buildChallengeTapQuestions(
+  questions: readonly ChallengeQuestion[],
+  mode: Extract<ChallengeMode, 'answer-tap' | 'expression-tap'>,
+  random: RandomSource = Math.random,
+): TapQuestion[] {
+  const source = allChallengeQuestions();
+  return questions.map((question) => {
+    if (mode === 'answer-tap') {
+      const wrongChoices = shuffle(
+        [...new Set(source.map((candidate) => String(candidate.answer)))].filter((choice) => choice !== String(question.answer)),
+        random,
+      ).slice(0, 3);
+      return {
+        expression: question.expression,
+        prompt: `${question.expression} = ?`,
+        correctChoice: String(question.answer),
+        choices: shuffle([String(question.answer), ...wrongChoices], random),
+        kind: 'answer',
+      };
+    }
+
+    const wrongChoices = shuffle(
+      source.filter((candidate) => candidate.answer !== question.answer).map((candidate) => candidate.expression),
+      random,
+    ).slice(0, 3);
+    return {
+      expression: question.expression,
+      prompt: `${question.answer} = ?`,
+      correctChoice: question.expression,
+      choices: shuffle([question.expression, ...wrongChoices], random),
+      kind: 'expression',
+    };
+  });
+}
+
+export function calculateChallengeStars(correct: number, total: number): 1 | 2 | 3 | 4 | 5 {
+  const accuracy = total === 0 ? 0 : correct / total;
+  if (accuracy === 1) return 5;
+  if (accuracy >= 0.9) return 4;
+  if (accuracy >= 0.8) return 3;
+  if (accuracy >= 0.7) return 2;
+  return 1;
 }

@@ -8,6 +8,10 @@ import TapPracticeScreen from './screens/TapPracticeScreen';
 import ResultScreen from './screens/ResultScreen';
 import RankingScreen from './screens/RankingScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import ChallengeSetupScreen from './screens/ChallengeSetupScreen';
+import ChallengeTapScreen from './screens/ChallengeTapScreen';
+import ChallengeResultScreen from './screens/ChallengeResultScreen';
+import ChallengeSpeechScreen from './screens/ChallengeSpeechScreen';
 import AdminPortal from './screens/AdminPortal';
 import { readScreenHistory } from './lib/screenHistory';
 
@@ -56,6 +60,10 @@ function StudentApp() {
       {currentScreen === 'result' && <ResultScreen />}
       {currentScreen === 'ranking' && <RankingScreen />}
       {currentScreen === 'profile' && <ProfileScreen />}
+      {currentScreen === 'challengeSetup' && <ChallengeSetupScreen />}
+      {currentScreen === 'challengeTap' && <ChallengeTapScreen />}
+      {currentScreen === 'challengeResult' && <ChallengeResultScreen />}
+      {currentScreen === 'challengeSpeech' && <ChallengeSpeechScreen />}
     </div>
   );
 }

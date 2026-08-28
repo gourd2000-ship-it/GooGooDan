@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildTapQuestions,
+  buildChallengeTapQuestions,
   calculateScore,
+  calculateChallengeStars,
+  createChallengeQuestions,
   createQuestionOrder,
 } from './practice';
 
@@ -72,5 +75,50 @@ describe('calculateScore', () => {
     expect(calculateScore(6, 'reverse')).toBe(72);
     expect(calculateScore(6, 'random')).toBe(120);
     expect(calculateScore(10, 'random')).toBe(200);
+  });
+});
+
+describe('createChallengeQuestions', () => {
+  it('creates the requested number of unique expressions from the 1 to 9 tables', () => {
+    const questions = createChallengeQuestions(20, () => 0);
+
+    expect(questions).toHaveLength(20);
+    expect(new Set(questions.map((question) => question.expression)).size).toBe(20);
+    expect(questions.every((question) => question.left >= 1 && question.left <= 9)).toBe(true);
+    expect(questions.every((question) => question.right >= 1 && question.right <= 9)).toBe(true);
+  });
+
+  it('only accepts the three configured challenge question counts', () => {
+    expect(() => createChallengeQuestions(19 as 20)).toThrow();
+    expect(() => createChallengeQuestions(31 as 30)).toThrow();
+  });
+});
+
+describe('buildChallengeTapQuestions', () => {
+  it('builds answer choices for answer-tap mode and expression choices for expression-tap mode', () => {
+    const source = [
+      { left: 3, right: 4, expression: '3 x 4', answer: 12 },
+      { left: 2, right: 6, expression: '2 x 6', answer: 12 },
+    ];
+
+    const answerQuestions = buildChallengeTapQuestions(source, 'answer-tap', () => 0);
+    const expressionQuestions = buildChallengeTapQuestions(source, 'expression-tap', () => 0);
+
+    expect(answerQuestions[0]).toMatchObject({ prompt: '3 x 4 = ?', correctChoice: '12', kind: 'answer' });
+    expect(expressionQuestions[0]).toMatchObject({ prompt: '12 = ?', correctChoice: '3 x 4', kind: 'expression' });
+    expect(answerQuestions[0].choices).toContain('12');
+    expect(expressionQuestions[0].choices).toContain('3 x 4');
+  });
+});
+
+describe('calculateChallengeStars', () => {
+  it.each([
+    [20, 20, 5],
+    [18, 20, 4],
+    [16, 20, 3],
+    [14, 20, 2],
+    [13, 20, 1],
+  ] as const)('assigns %i correct out of %i questions to %i stars', (correct, total, stars) => {
+    expect(calculateChallengeStars(correct, total)).toBe(stars);
   });
 });

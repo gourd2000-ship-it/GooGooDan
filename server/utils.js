@@ -87,6 +87,17 @@ function validateExpectedQuestions(table, mode, input) {
   return null;
 }
 
+function validateChallengeExpectedQuestions(input) {
+  const rawQuestions = readExpectedAnswers(input);
+  if (!rawQuestions || ![20, 25, 30].includes(rawQuestions.length)) return null;
+  const questions = rawQuestions.map(normalizeExpectedAnswer);
+  if (questions.some((question) => question === null) || new Set(questions).size !== questions.length) return null;
+  return questions.every((question) => {
+    const match = /^(\d+) x (\d+)$/.exec(question);
+    return match && Number(match[1]) >= 1 && Number(match[1]) <= 9 && Number(match[2]) >= 1 && Number(match[2]) <= 9;
+  }) ? questions : null;
+}
+
 function cleanMimeType(rawMimeType) {
   if (!rawMimeType || typeof rawMimeType !== 'string') return 'audio/webm';
   return rawMimeType.split(';')[0].trim().toLowerCase() || 'audio/webm';
@@ -177,6 +188,29 @@ function normalizeEvaluation(evaluation, expectedQuestions) {
   return { results, totalCorrect, feedback };
 }
 
+function normalizeChallengeEvaluation(evaluation, expectedQuestions, challengeMode) {
+  if (challengeMode === 'answer-speech') return normalizeEvaluation(evaluation, expectedQuestions);
+  const rawResults = Array.isArray(evaluation?.results) ? evaluation.results : [];
+  const results = expectedQuestions.map((question, index) => {
+    const rawResult = rawResults[index];
+    const spoken = typeof rawResult?.spoken === 'string' ? rawResult.spoken.trim().slice(0, 100) : '';
+    const match = /^(\d+) x (\d+)$/.exec(question);
+    const expectedProduct = match ? Number(match[1]) * Number(match[2]) : NaN;
+    const spokenMatch = /(\d+)\s*(?:x|X|\*)\s*(\d+)/.exec(spoken);
+    const isCorrect = rawResult?.isCorrect === true
+      && Boolean(spokenMatch)
+      && Number(spokenMatch[1]) * Number(spokenMatch[2]) === expectedProduct;
+    return { question, expected: question, spoken, isCorrect };
+  });
+  return {
+    results,
+    totalCorrect: results.filter((result) => result.isCorrect).length,
+    feedback: typeof evaluation?.feedback === 'string' && evaluation.feedback.trim()
+      ? evaluation.feedback.trim().slice(0, 500)
+      : FALLBACK_FEEDBACK,
+  };
+}
+
 function validateAudioFile(file) {
   if (!file) return { valid: false, reason: '오디오 파일이 수신되지 않았습니다.' };
   if (!file.buffer || !Buffer.isBuffer(file.buffer) || file.size === 0) {
@@ -237,9 +271,11 @@ module.exports = {
   getGeminiApiKey,
   isClearlySpokenAnswer,
   normalizeEvaluation,
+  normalizeChallengeEvaluation,
   parseGeminiJson,
   validateAudioFile,
   validateExpectedAnswers,
+  validateChallengeExpectedQuestions,
   validateExpectedQuestions,
   validatePracticeType,
   validateTapRecord,

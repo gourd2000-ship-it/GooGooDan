@@ -1,6 +1,6 @@
-export type StudentScreenHistory = 'name' | 'home' | 'practice' | 'tapPractice' | 'loading' | 'result' | 'ranking' | 'profile';
+export type StudentScreenHistory = 'name' | 'home' | 'practice' | 'tapPractice' | 'loading' | 'result' | 'ranking' | 'profile' | 'challengeSetup' | 'challengeTap' | 'challengeSpeech' | 'challengeResult';
 
-const screens = new Set<StudentScreenHistory>(['name', 'home', 'practice', 'tapPractice', 'loading', 'result', 'ranking', 'profile']);
+const screens = new Set<StudentScreenHistory>(['name', 'home', 'practice', 'tapPractice', 'loading', 'result', 'ranking', 'profile', 'challengeSetup', 'challengeTap', 'challengeSpeech', 'challengeResult']);
 const stateFor = (screen: StudentScreenHistory) => ({ studentScreen: screen });
 
 export function readScreenHistory(value: unknown): StudentScreenHistory | null {

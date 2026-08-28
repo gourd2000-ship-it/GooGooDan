@@ -1,10 +1,10 @@
 import { create } from 'zustand';
-import type { PracticeOrder, PracticeType, TapGameMode, TapQuestion } from '../lib/practice';
+import type { ChallengeMode, ChallengeQuestion, ChallengeQuestionCount, PracticeOrder, PracticeType, TapGameMode, TapQuestion } from '../lib/practice';
 import { changeStudentAccessCode, loginStudent, logoutStudent, restoreStudentSession, type ChangeAccessCodeInput, type StudentLoginInput, type StudentSession } from '../lib/auth';
 import { API_URL } from '../config';
 import { pushScreenHistory, replaceScreenHistory } from '../lib/screenHistory';
 
-export type ScreenType = 'name' | 'home' | 'practice' | 'tapPractice' | 'loading' | 'result' | 'ranking' | 'profile';
+export type ScreenType = 'name' | 'home' | 'practice' | 'tapPractice' | 'loading' | 'result' | 'ranking' | 'profile' | 'challengeSetup' | 'challengeTap' | 'challengeSpeech' | 'challengeResult';
 
 export interface EvaluationItem {
   question: string;
@@ -56,6 +56,10 @@ interface AppState {
   tapRecordStatus: TapRecordStatus;
   totalTime: number;
   timeLimitReached: boolean;
+  challengeMode: ChallengeMode | null;
+  challengeQuestionCount: ChallengeQuestionCount;
+  challengeQuestions: ChallengeQuestion[];
+  challengeEvaluationResult: TapEvaluationResult | null;
   setScreen: (screen: ScreenType) => void;
   setUserName: (name: string) => void;
   login: (input: StudentLoginInput) => Promise<void>;
@@ -78,6 +82,10 @@ interface AppState {
   setTapRecordStatus: (status: TapRecordStatus) => void;
   setTotalTime: (time: number) => void;
   setTimeLimitReached: (reached: boolean) => void;
+  setChallengeMode: (mode: ChallengeMode | null) => void;
+  setChallengeQuestionCount: (count: ChallengeQuestionCount) => void;
+  setChallengeQuestions: (questions: ChallengeQuestion[]) => void;
+  setChallengeEvaluationResult: (result: TapEvaluationResult | null) => void;
   resetApp: () => void;
 }
 
@@ -102,6 +110,10 @@ export const useStore = create<AppState>((set) => ({
   tapRecordStatus: 'idle',
   totalTime: 0,
   timeLimitReached: false,
+  challengeMode: null,
+  challengeQuestionCount: 25,
+  challengeQuestions: [],
+  challengeEvaluationResult: null,
   setScreen: (screen) => {
     pushScreenHistory(screen);
     set({ currentScreen: screen });
@@ -153,6 +165,10 @@ export const useStore = create<AppState>((set) => ({
   setTapRecordStatus: (tapRecordStatus) => set({ tapRecordStatus }),
   setTotalTime: (totalTime) => set({ totalTime }),
   setTimeLimitReached: (timeLimitReached) => set({ timeLimitReached }),
+  setChallengeMode: (challengeMode) => set({ challengeMode }),
+  setChallengeQuestionCount: (challengeQuestionCount) => set({ challengeQuestionCount }),
+  setChallengeQuestions: (challengeQuestions) => set({ challengeQuestions }),
+  setChallengeEvaluationResult: (challengeEvaluationResult) => set({ challengeEvaluationResult }),
   resetApp: () => set((state) => ({
     currentScreen: state.userName ? 'home' : 'name',
     practiceType: 'speech',
@@ -170,5 +186,9 @@ export const useStore = create<AppState>((set) => ({
     tapRecordStatus: 'idle',
     totalTime: 0,
     timeLimitReached: false,
+    challengeMode: null,
+    challengeQuestionCount: 25,
+    challengeQuestions: [],
+    challengeEvaluationResult: null,
   })),
 }));

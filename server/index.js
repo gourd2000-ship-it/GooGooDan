@@ -24,7 +24,9 @@ const {
   getAllowedOrigins,
   getGeminiApiKey,
   normalizeEvaluation,
+  normalizeChallengeEvaluation,
   parseGeminiJson,
+  validateChallengeExpectedQuestions,
   validateAudioFile,
   validateExpectedQuestions,
   validatePracticeType,
@@ -208,7 +210,8 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
         return res.status(400).json({ error: audioCheck.reason });
       }
 
-    const { table, mode, expectedAnswers, totalTime } = req.body;
+    const { table, mode, expectedAnswers, totalTime, practiceKind, challengeMode } = req.body;
+    const isChallenge = practiceKind === 'challenge';
 
     const parsedTotalTime = Number(totalTime);
     if (!Number.isInteger(parsedTotalTime) || parsedTotalTime < 0 || parsedTotalTime > MAX_AUDIO_DURATION_SECONDS * 1000) {
@@ -225,19 +228,21 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
 
     // 입력값 검증 (보안 강화 및 SQL injection/XSS 사전 예방)
     const parsedTable = Number(table);
-    if (!Number.isInteger(parsedTable) || parsedTable < 2 || parsedTable > 9) {
+    if (!isChallenge && (!Number.isInteger(parsedTable) || parsedTable < 2 || parsedTable > 9)) {
       return res.status(400).json({ error: '유효하지 않은 단 선택입니다. (2~9단만 가능)' });
     }
 
     const validModes = ['sequential', 'random', 'reverse'];
-    if (!validModes.includes(mode)) {
+    if (!isChallenge && !validModes.includes(mode)) {
       return res.status(400).json({ error: '유효하지 않은 연습 모드입니다.' });
     }
 
     // 이름 검증: 특수문자, 스크립트 코드 필터링
     const cleanName = req.student.studentName;
 
-    const safeExpectedAnswers = validateExpectedQuestions(parsedTable, mode, expectedAnswers);
+    const safeExpectedAnswers = isChallenge
+      ? validateChallengeExpectedQuestions(expectedAnswers)
+      : validateExpectedQuestions(parsedTable, mode, expectedAnswers);
     if (!safeExpectedAnswers) {
       return res.status(400).json({ error: '선택한 단과 연습 모드에 맞는 10개 문제가 필요합니다.' });
     }
@@ -308,10 +313,12 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
       return res.status(502).json({ error: 'AI 채점 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.' });
     }
 
-    const normalizedEvaluation = normalizeEvaluation(evaluation, safeExpectedAnswers);
+    const normalizedEvaluation = isChallenge
+      ? normalizeChallengeEvaluation(evaluation, safeExpectedAnswers, challengeMode)
+      : normalizeEvaluation(evaluation, safeExpectedAnswers);
 
     // Neon DB 기록 저장
-    if (pool && cleanName) {
+    if (pool && cleanName && !isChallenge) {
       const correct = normalizedEvaluation.totalCorrect;
       let score = 0;
       if (mode === 'reverse') {

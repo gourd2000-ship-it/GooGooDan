@@ -1,6 +1,6 @@
 import { Play, Trophy, UserRoundCog } from 'lucide-react';
 import { buildTapQuestions, createQuestionOrder } from '../lib/practice';
-import type { PracticeOrder, PracticeType, TapGameMode } from '../lib/practice';
+import type { ChallengeMode, PracticeOrder, PracticeType, TapGameMode } from '../lib/practice';
 import { useStore } from '../store/useStore';
 
 const tables = [2, 3, 4, 5, 6, 7, 8, 9];
@@ -13,6 +13,12 @@ const tapGameModes: { value: TapGameMode; label: string }[] = [
   { value: 'answer', label: '답 고르기' },
   { value: 'expression', label: '식 고르기' },
   { value: 'mixed', label: '답과 식 섞기' },
+];
+const challengeModes: { value: ChallengeMode; label: string }[] = [
+  { value: 'answer-speech', label: '답 말하기' },
+  { value: 'answer-tap', label: '답 누르기' },
+  { value: 'expression-speech', label: '식 말하기' },
+  { value: 'expression-tap', label: '식 누르기' },
 ];
 
 interface PracticeTypeCardProps {
@@ -86,6 +92,31 @@ function PracticeTypeCard({
   );
 }
 
+function ChallengeCard() {
+  const { challengeMode, setChallengeMode, setScreen } = useStore();
+
+  return (
+    <section className="flex h-full flex-col rounded-2xl border-2 border-amber-200 bg-amber-50 p-5 text-left shadow-sm">
+      <div>
+        <h2 className="text-2xl font-black text-amber-800">구구단 챌린지</h2>
+        <p className="mt-1 text-sm font-medium text-amber-700">1단부터 9단까지 섞어서 도전해요.</p>
+      </div>
+      <div className="mt-6 grid grid-cols-2 gap-3" aria-label="챌린지 방식 선택">
+        {challengeModes.map(({ value, label }) => (
+          <button key={value} type="button" aria-pressed={challengeMode === value} onClick={() => setChallengeMode(value)}
+            className={`rounded-xl px-3 py-4 text-lg font-black transition-all ${challengeMode === value ? 'bg-amber-500 text-white shadow-sm' : 'bg-white text-amber-800 hover:bg-amber-100'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <button type="button" disabled={!challengeMode} onClick={() => setScreen('challengeSetup')}
+        className="mt-auto w-full rounded-2xl bg-amber-600 py-4 text-xl font-black text-white shadow-lg transition-transform hover:scale-[1.02] hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-amber-200 disabled:text-amber-500 disabled:shadow-none">
+        도전하기
+      </button>
+    </section>
+  );
+}
+
 export default function HomeScreen() {
   const store = useStore();
   const handleStart = () => {
@@ -117,10 +148,13 @@ export default function HomeScreen() {
         <h1 className="mb-2 text-center text-4xl font-black text-blue-600">구구단 연습!</h1>
         <p className="mb-6 text-center font-medium text-slate-500">원하는 학습 방법을 하나 골라 주세요.</p>
         <div className="grid gap-5 md:grid-cols-2">
-          <PracticeTypeCard type="speech" title="말하는 구구단" isActive={store.practiceType === 'speech'} table={store.speechTable} order={store.speechMode} tapGameMode={store.tapGameMode}
-            onSelect={() => store.setPracticeType('speech')} onTableChange={store.setSpeechTable} onOrderChange={store.setSpeechMode} onTapGameModeChange={store.setTapGameMode} />
-          <PracticeTypeCard type="tap" title="누르는 구구단" isActive={store.practiceType === 'tap'} table={store.tapTable} order={store.tapMode} tapGameMode={store.tapGameMode}
-            onSelect={() => store.setPracticeType('tap')} onTableChange={store.setTapTable} onOrderChange={store.setTapMode} onTapGameModeChange={store.setTapGameMode} />
+          <div className="space-y-5">
+            <PracticeTypeCard type="speech" title="말하는 구구단" isActive={store.practiceType === 'speech'} table={store.speechTable} order={store.speechMode} tapGameMode={store.tapGameMode}
+              onSelect={() => store.setPracticeType('speech')} onTableChange={store.setSpeechTable} onOrderChange={store.setSpeechMode} onTapGameModeChange={store.setTapGameMode} />
+            <PracticeTypeCard type="tap" title="누르는 구구단" isActive={store.practiceType === 'tap'} table={store.tapTable} order={store.tapMode} tapGameMode={store.tapGameMode}
+              onSelect={() => store.setPracticeType('tap')} onTableChange={store.setTapTable} onOrderChange={store.setTapMode} onTapGameModeChange={store.setTapGameMode} />
+          </div>
+          <ChallengeCard />
         </div>
         <button type="button" onClick={handleStart} className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-2xl font-bold text-white shadow-lg transition-transform hover:scale-[1.02] hover:bg-blue-700 active:scale-[0.98]">
           <Play fill="currentColor" size={28} />시작하기!
