@@ -22,7 +22,7 @@ describe('HomeScreen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '누르는 구구단 3단' }));
     fireEvent.click(screen.getByRole('button', { name: '식 고르기' }));
-    fireEvent.click(screen.getByRole('button', { name: '시작하기!' }));
+    fireEvent.click(screen.getAllByRole('button', { name: '시작하기' })[1]);
 
     expect(useStore.getState().tapGameMode).toBe('expression');
     expect(useStore.getState().selectedTable).toBe(3);
@@ -54,5 +54,23 @@ describe('HomeScreen', () => {
     render(<HomeScreen />);
 
     expect(screen.getByRole('button', { name: '도전하기' })).toHaveClass('mt-6');
+  });
+
+  it('places a start button directly below each core practice card', () => {
+    render(<HomeScreen />);
+
+    const startButtons = screen.getAllByRole('button', { name: '시작하기' });
+    expect(startButtons).toHaveLength(2);
+
+    fireEvent.click(startButtons[1]);
+    expect(useStore.getState().currentScreen).toBe('tapPractice');
+  });
+
+  it('shows all four compact challenge mode buttons in one row', () => {
+    render(<HomeScreen />);
+
+    const modes = screen.getByLabelText('챌린지 방식 선택');
+    expect(modes).toHaveClass('grid-cols-4');
+    expect(screen.getByRole('button', { name: '답 말하기' })).toHaveClass('px-2', 'py-2', 'text-sm');
   });
 });
