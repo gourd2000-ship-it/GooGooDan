@@ -24,9 +24,13 @@ describe('ChallengeSpeechScreen', () => {
   it('shows answer-speaking prompts without question numbers', () => {
     render(<ChallengeSpeechScreen />);
 
-    expect(screen.getByText('3 x 4 = ?', { exact: true })).toBeInTheDocument();
+    const firstQuestion = screen.getByText('3 x 4 = ?', { exact: true });
+    const startButton = screen.getByRole('button', { name: '말하기 시작' });
+
+    expect(firstQuestion).toBeInTheDocument();
     expect(screen.getByText('5 x 6 = ?', { exact: true })).toBeInTheDocument();
     expect(screen.queryByText(/^1\.\s/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^2\.\s/)).not.toBeInTheDocument();
+    expect(startButton.compareDocumentPosition(firstQuestion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

@@ -109,10 +109,10 @@ export default function ChallengeSpeechScreen() {
       <main className="mt-8 w-full max-w-2xl rounded-3xl border-4 border-amber-100 bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between rounded-2xl bg-amber-50 p-4"><h1 className="text-2xl font-black text-amber-800">구구단 챌린지 · {isExpressionMode ? '식 말하기' : '답 말하기'}</h1><span className="font-mono text-xl font-bold text-amber-700">{(elapsed / 1000).toFixed(2)}초</span></div>
         <p className="my-5 text-center font-bold text-slate-500">아래 문제를 순서대로 말해 주세요.</p>
+        <div className="mb-5 flex justify-center"><button type="button" onClick={recording ? () => stopRecording() : startRecording} className={`rounded-full px-8 py-5 text-xl font-black text-white ${recording ? 'bg-slate-800 hover:bg-slate-900' : 'bg-red-500 hover:bg-red-600'}`}>{recording ? <><Square className="mr-2 inline" fill="currentColor" />말하기 끝내기</> : <><Mic className="mr-2 inline" />말하기 시작</>}</button></div>
         <div className="space-y-2">
           {challengeQuestions.map((question) => <div key={question.expression} className="rounded-xl border-2 border-slate-100 p-3 text-center text-2xl font-black text-slate-800">{isExpressionMode ? `${question.answer} = ?` : `${question.expression} = ?`}</div>)}
         </div>
-        <div className="mt-8 flex justify-center"><button type="button" onClick={recording ? () => stopRecording() : startRecording} className={`rounded-full px-8 py-5 text-xl font-black text-white ${recording ? 'bg-slate-800 hover:bg-slate-900' : 'bg-red-500 hover:bg-red-600'}`}>{recording ? <><Square className="mr-2 inline" fill="currentColor" />말하기 끝내기</> : <><Mic className="mr-2 inline" />말하기 시작</>}</button></div>
       </main>
     </div>
   );
