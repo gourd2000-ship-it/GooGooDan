@@ -89,7 +89,7 @@ function validateExpectedQuestions(table, mode, input) {
 
 function validateChallengeExpectedQuestions(input) {
   const rawQuestions = readExpectedAnswers(input);
-  if (!rawQuestions || ![20, 25, 30].includes(rawQuestions.length)) return null;
+  if (!rawQuestions || rawQuestions.length < 1 || rawQuestions.length > 30) return null;
   const questions = rawQuestions.map(normalizeExpectedAnswer);
   if (questions.some((question) => question === null) || new Set(questions).size !== questions.length) return null;
   return questions.every((question) => {

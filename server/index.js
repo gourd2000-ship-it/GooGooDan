@@ -11,6 +11,8 @@ const { Pool } = require('pg');
 const { createGoogleIdTokenVerifier, createPoolAdminLookup, createRequireAdmin } = require('./adminAuth');
 const { createAdminStudentHttpHandlers, createAdminStudentService, createPgAdminStudentRepository } = require('./adminStudents');
 const { createAdminProgressHttpHandler, createAdminProgressService, createPgAdminProgressRepository } = require('./adminProgress');
+const { createAdminChallengeRankingHttpHandler, createAdminChallengeRankingService, createPgAdminChallengeRankingRepository } = require('./adminChallengeRanking');
+const { createAdminRankingHttpHandler, createAdminRankingService, createPgAdminRankingRepository } = require('./adminRanking');
 const { createCorsOptions, createSessionCookieOptions } = require('./httpSecurity');
 const { createPgStudentAuthRepository, createStudentAuthHttpHandlers, createStudentAuthService } = require('./auth');
 const { createTenantMiddleware, parseTenantConfiguration } = require('./tenant');
@@ -111,6 +113,12 @@ const adminStudentHandlers = pool
 const adminProgressHandler = pool
   ? createAdminProgressHttpHandler({ service: createAdminProgressService({ repository: createPgAdminProgressRepository(pool) }) })
   : null;
+const adminRankingHandler = pool
+  ? createAdminRankingHttpHandler({ service: createAdminRankingService({ repository: createPgAdminRankingRepository(pool) }) })
+  : null;
+const adminChallengeRankingHandler = pool
+  ? createAdminChallengeRankingHttpHandler({ service: createAdminChallengeRankingService({ repository: createPgAdminChallengeRankingRepository(pool) }) })
+  : null;
 const requireStudentAuthService = (req, res, next) => studentAuthHandlers
   ? next()
   : res.status(503).json({ error: 'Student authentication is not configured' });
@@ -135,6 +143,8 @@ app.get('/api/admin/session', (req, res) => {
   res.json({ schoolId: req.tenant.id, administrator: req.admin });
 });
 app.get('/api/admin/progress', (req, res) => adminProgressHandler ? adminProgressHandler(req, res) : res.status(503).json({ error: 'Progress data is unavailable' }));
+app.get('/api/admin/ranking', (req, res) => adminRankingHandler ? adminRankingHandler(req, res) : res.status(503).json({ error: 'Ranking data is unavailable' }));
+app.get('/api/admin/challenge/ranking', (req, res) => adminChallengeRankingHandler ? adminChallengeRankingHandler(req, res) : res.status(503).json({ error: 'Challenge ranking data is unavailable' }));
 app.get('/api/admin/students', (req, res) => adminStudentHandlers ? adminStudentHandlers.list(req, res) : res.status(503).json({ error: 'Student management is unavailable' }));
 app.post('/api/admin/students', (req, res) => adminStudentHandlers ? adminStudentHandlers.create(req, res) : res.status(503).json({ error: 'Student management is unavailable' }));
 app.post('/api/admin/students/import', (req, res) => adminStudentHandlers ? adminStudentHandlers.import(req, res) : res.status(503).json({ error: 'Student management is unavailable' }));
@@ -293,7 +303,7 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
       ? validateChallengeExpectedQuestions(expectedAnswers)
       : validateExpectedQuestions(parsedTable, mode, expectedAnswers);
     if (!safeExpectedAnswers) {
-      return res.status(400).json({ error: '선택한 단과 연습 모드에 맞는 10개 문제가 필요합니다.' });
+      return res.status(400).json({ error: isChallenge ? '유효한 챌린지 문제가 필요합니다.' : '선택한 단과 연습 모드에 맞는 10개 문제가 필요합니다.' });
     }
 
     console.log(`[채점 요청] 사용자: ${cleanName}, ${parsedTable}단, 파일크기: ${req.file.size} bytes, 형식: ${req.file.mimetype}`);

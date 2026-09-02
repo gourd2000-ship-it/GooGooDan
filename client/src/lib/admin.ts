@@ -1,3 +1,5 @@
+import type { ChallengeMode, ChallengeQuestionCount } from './practice';
+
 export interface AdminStudent {
   id: string;
   grade: number;
@@ -20,6 +22,20 @@ export interface AdminProgressStudent {
   grade: number;
   classNumber: number;
   tables: Record<number, Partial<Record<'speech' | 'tap', PracticeProgress>>>;
+}
+
+export interface AdminRankingEntry {
+  studentName: string;
+  table: number;
+  score: number;
+  totalTimeMs: number;
+}
+
+export interface AdminChallengeRankingEntry {
+  studentName: string;
+  totalCorrect: number;
+  starCount: number;
+  totalTimeMs: number;
 }
 
 type Fetcher = (input: string, init?: RequestInit) => Promise<{ ok: boolean; json: () => Promise<unknown> }>;
@@ -64,4 +80,17 @@ export async function getAdminProgress(apiUrl: string, idToken: string, filters:
   if (filters.classNumber) params.set('classNumber', String(filters.classNumber));
   const suffix = params.size ? `?${params.toString()}` : '';
   return readResponse<AdminProgressStudent[]>(await fetcher(`${apiUrl}/api/admin/progress${suffix}`, { headers: headers(idToken), credentials: 'include' }), 'students');
+}
+
+export async function getAdminRanking(apiUrl: string, idToken: string, filters: { practiceType?: 'speech' | 'tap'; table?: number | 'all' } = {}, fetcher: Fetcher = fetch): Promise<AdminRankingEntry[]> {
+  const params = new URLSearchParams();
+  if (filters.practiceType) params.set('practiceType', filters.practiceType);
+  if (filters.table && filters.table !== 'all') params.set('table', String(filters.table));
+  const suffix = params.size ? `?${params.toString()}` : '';
+  return readResponse<AdminRankingEntry[]>(await fetcher(`${apiUrl}/api/admin/ranking${suffix}`, { headers: headers(idToken), credentials: 'include' }), 'ranking');
+}
+
+export async function getAdminChallengeRanking(apiUrl: string, idToken: string, filters: { questionCount: ChallengeQuestionCount; challengeMode: ChallengeMode }, fetcher: Fetcher = fetch): Promise<AdminChallengeRankingEntry[]> {
+  const params = new URLSearchParams({ questionCount: String(filters.questionCount), challengeMode: filters.challengeMode });
+  return readResponse<AdminChallengeRankingEntry[]>(await fetcher(`${apiUrl}/api/admin/challenge/ranking?${params.toString()}`, { headers: headers(idToken), credentials: 'include' }), 'ranking');
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createAdminStudent, getAdminProgress, listAdminStudents } from './admin';
+import { createAdminStudent, getAdminChallengeRanking, getAdminProgress, getAdminRanking, listAdminStudents } from './admin';
 
 describe('administrator API client', () => {
   it('uses the Google ID token to scope student roster requests', async () => {
@@ -23,5 +23,19 @@ describe('administrator API client', () => {
 
     await expect(getAdminProgress('https://api.example', 'google-id-token', { grade: 3 }, fetcher)).resolves.toEqual([]);
     expect(fetcher).toHaveBeenCalledWith('https://api.example/api/admin/progress?grade=3', { headers: { Authorization: 'Bearer google-id-token' }, credentials: 'include' });
+  });
+
+  it('requests the teacher-scoped ranking with the Google ID token', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ranking: [] }) });
+
+    await expect(getAdminRanking('https://api.example', 'google-id-token', { practiceType: 'tap', table: 5 }, fetcher)).resolves.toEqual([]);
+    expect(fetcher).toHaveBeenCalledWith('https://api.example/api/admin/ranking?practiceType=tap&table=5', { headers: { Authorization: 'Bearer google-id-token' }, credentials: 'include' });
+  });
+
+  it('requests a teacher-scoped challenge ranking group with the Google ID token', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ranking: [] }) });
+
+    await expect(getAdminChallengeRanking('https://api.example', 'google-id-token', { questionCount: 25, challengeMode: 'expression-speech' }, fetcher)).resolves.toEqual([]);
+    expect(fetcher).toHaveBeenCalledWith('https://api.example/api/admin/challenge/ranking?questionCount=25&challengeMode=expression-speech', { headers: { Authorization: 'Bearer google-id-token' }, credentials: 'include' });
   });
 });

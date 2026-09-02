@@ -2,12 +2,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeChallengeEvaluation, validateChallengeExpectedQuestions } = require('./utils');
 
-test('validateChallengeExpectedQuestions accepts only unique 1-to-9 expressions at configured challenge sizes', () => {
+test('validateChallengeExpectedQuestions accepts a full challenge and a smaller retry set of unique 1-to-9 expressions', () => {
   const questions = Array.from({ length: 20 }, (_, index) => `${Math.floor(index / 9) + 1} x ${(index % 9) + 1}`);
+  const retryQuestion = ['3 x 4'];
 
   assert.deepEqual(validateChallengeExpectedQuestions(JSON.stringify(questions)), questions);
+  assert.deepEqual(validateChallengeExpectedQuestions(JSON.stringify(retryQuestion)), retryQuestion);
   assert.equal(validateChallengeExpectedQuestions(JSON.stringify([...questions.slice(0, 19), '1 x 1'])), null);
-  assert.equal(validateChallengeExpectedQuestions(JSON.stringify(questions.slice(0, 19))), null);
+  assert.equal(validateChallengeExpectedQuestions(JSON.stringify([])), null);
+  const tooManyQuestions = Array.from({ length: 31 }, (_, index) => `${Math.floor(index / 9) + 1} x ${(index % 9) + 1}`);
+  assert.equal(validateChallengeExpectedQuestions(JSON.stringify(tooManyQuestions)), null);
   assert.equal(validateChallengeExpectedQuestions(JSON.stringify([...questions.slice(0, 19), '10 x 1'])), null);
 });
 
