@@ -18,6 +18,7 @@ const { createGeminiClient, evaluateAudio } = require('./gemini');
 const { MAX_AUDIO_DURATION_SECONDS, validateAudioDuration } = require('./audioDuration');
 const { MIN_HALL_OF_FAME_TIME_MS, isHallOfFameEligible } = require('./ranking');
 const { parseChallengeRankingRequest, validateChallengeRecord } = require('./challengeRanking');
+const { saveSpeechRecord } = require('./recordPersistence');
 const {
   ALLOWED_AUDIO_MIME_TYPES,
   MAX_AUDIO_SIZE_BYTES,
@@ -367,26 +368,16 @@ app.post('/api/evaluate', requireTenant, requireStudent, (req, res) => {
 
     // Neon DB 기록 저장
     if (pool && cleanName && !isChallenge) {
-      const correct = normalizedEvaluation.totalCorrect;
-      let score = 0;
-      if (mode === 'reverse') {
-        score = correct * 12;
-      } else if (mode === 'random') {
-        score = correct * 20;
-      } else {
-        score = correct * 10;
-      }
-      const totalTimeMs = parsedTotalTime || 0;
-      
-      try {
-        await pool.query(
-          'INSERT INTO records (student_name, table_number, mode, score, total_time_ms, practice_type, tap_game_mode, school_id, student_id, total_correct) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-          [cleanName, parsedTable, mode, score, totalTimeMs, 'speech', null, req.student.schoolId, req.student.id, normalizedEvaluation.totalCorrect]
-        );
-        console.log('✅ Neon DB에 기록 저장 성공');
-      } catch (dbError) {
-        console.error('❌ Neon DB 저장 중 오류:', dbError.message);
-      }
+      await saveSpeechRecord(pool, {
+        studentName: cleanName,
+        studentId: req.student.id,
+        schoolId: req.student.schoolId,
+        table: parsedTable,
+        mode,
+        totalTimeMs: parsedTotalTime,
+        totalCorrect: normalizedEvaluation.totalCorrect,
+      });
+      console.log('✅ Neon DB에 기록 저장 성공');
     }
 
     res.json(normalizedEvaluation);

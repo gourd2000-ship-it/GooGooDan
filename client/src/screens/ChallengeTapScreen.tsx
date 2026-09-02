@@ -7,7 +7,7 @@ import { useStore } from '../store/useStore';
 export default function ChallengeTapScreen() {
   const {
     challengeMode, challengeQuestionCount, challengeQuestions, setChallengeEvaluationResult,
-    setScreen, setTotalTime,
+    setScreen, setTotalTime, setChallengeRecordPayload, setChallengeRecordStatus,
   } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<{ question: string; expected: string; selected: string; isCorrect: boolean }>>([]);
@@ -44,13 +44,19 @@ export default function ChallengeTapScreen() {
       feedback: '챌린지를 끝까지 풀었어요! 결과를 확인해 볼까요?',
     });
     if (challengeQuestions.length === challengeQuestionCount) {
-      void saveChallengeRecord(API_URL, {
+      const record = {
         questionCount: challengeQuestionCount,
         challengeMode,
         totalCorrect,
         totalTime,
         starCount: calculateChallengeStars(totalCorrect, challengeQuestions.length),
-      }).catch(() => undefined);
+      };
+      setChallengeRecordPayload(record);
+      setChallengeRecordStatus('saving');
+      void saveChallengeRecord(API_URL, record).then(
+        () => setChallengeRecordStatus('saved'),
+        () => setChallengeRecordStatus('error'),
+      );
     }
     setScreen('challengeResult');
   };

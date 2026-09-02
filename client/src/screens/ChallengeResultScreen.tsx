@@ -1,4 +1,6 @@
 import { calculateChallengeStars } from '../lib/practice';
+import { saveChallengeRecord } from '../lib/challengeRanking';
+import { API_URL } from '../config';
 import { useStore } from '../store/useStore';
 
 const gradeNames = ['', '다시 도전', '조금만 더', '실력 쑥쑥', '챌린지 달인', '구구단 마스터'];
@@ -6,7 +8,8 @@ const gradeNames = ['', '다시 도전', '조금만 더', '실력 쑥쑥', '챌�
 export default function ChallengeResultScreen() {
   const {
     challengeMode, challengeQuestions, challengeEvaluationResult, totalTime,
-    setChallengeQuestions, setChallengeEvaluationResult, setScreen,
+    challengeRecordStatus, challengeRecordPayload, setChallengeQuestions, setChallengeEvaluationResult,
+    setChallengeRecordStatus, setScreen,
   } = useStore();
   const results = challengeEvaluationResult?.results ?? [];
   const totalCorrect = challengeEvaluationResult?.totalCorrect ?? 0;
@@ -20,6 +23,15 @@ export default function ChallengeResultScreen() {
     setChallengeQuestions(incorrectQuestions);
     setChallengeEvaluationResult(null);
     setScreen(challengeMode?.endsWith('tap') ? 'challengeTap' : 'challengeSpeech');
+  };
+
+  const retryRecordSave = () => {
+    if (!challengeRecordPayload) return;
+    setChallengeRecordStatus('saving');
+    void saveChallengeRecord(API_URL, challengeRecordPayload).then(
+      () => setChallengeRecordStatus('saved'),
+      () => setChallengeRecordStatus('error'),
+    );
   };
 
   return (
@@ -38,6 +50,9 @@ export default function ChallengeResultScreen() {
             <span>{result.question}</span><span>{result.isCorrect ? 'O' : `X (정답 ${result.expected})`}</span>
           </div>)}
         </div>
+        {challengeRecordStatus === 'saving' && <p role="status" className="mt-6 rounded-xl bg-blue-50 p-4 font-bold text-blue-700">랭킹 기록을 저장하고 있어요...</p>}
+        {challengeRecordStatus === 'saved' && <p role="status" className="mt-6 rounded-xl bg-green-50 p-4 font-bold text-green-700">랭킹 기록을 저장했어요!</p>}
+        {challengeRecordStatus === 'error' && <div role="alert" className="mt-6 rounded-xl bg-red-50 p-4 font-bold text-red-700"><p>랭킹 기록을 저장하지 못했어요.</p><button type="button" onClick={retryRecordSave} className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700">랭킹 기록 다시 저장</button></div>}
         {incorrectQuestions.length > 0 && <button type="button" onClick={retryIncorrect} className="mt-8 w-full rounded-2xl bg-amber-600 py-4 text-xl font-black text-white hover:bg-amber-700">틀린 문제 다시 풀기</button>}
         <button type="button" onClick={() => setScreen('home')} className="mt-3 w-full rounded-2xl bg-blue-600 py-4 text-xl font-black text-white hover:bg-blue-700">홈으로 돌아가기</button>
       </main>

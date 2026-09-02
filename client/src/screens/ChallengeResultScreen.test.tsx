@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ChallengeResultScreen from './ChallengeResultScreen';
 import { useStore } from '../store/useStore';
 
@@ -37,5 +37,31 @@ describe('ChallengeResultScreen', () => {
     expect(useStore.getState().challengeMode).toBe('answer-tap');
     expect(useStore.getState().challengeQuestions).toEqual([{ left: 2, right: 6, expression: '2 x 6', answer: 12 }]);
     expect(useStore.getState().currentScreen).toBe('challengeTap');
+  });
+
+  it('shows a retry action when challenge ranking storage fails', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    useStore.setState({
+      challengeRecordStatus: 'error',
+      challengeRecordPayload: {
+        questionCount: 25,
+        challengeMode: 'answer-tap',
+        totalCorrect: 24,
+        totalTime: 12_000,
+        starCount: 4,
+      },
+    } as never);
+
+    render(<ChallengeResultScreen />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('랭킹 기록을 저장하지 못했어요.');
+    screen.getByRole('button', { name: '랭킹 기록 다시 저장' }).click();
+
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(useStore.getState().challengeRecordStatus).toBe('saved');
+    });
+    vi.unstubAllGlobals();
   });
 });

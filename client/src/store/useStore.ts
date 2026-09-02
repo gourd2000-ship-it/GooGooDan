@@ -3,6 +3,7 @@ import type { ChallengeMode, ChallengeQuestion, ChallengeQuestionCount, Practice
 import { changeStudentAccessCode, loginStudent, logoutStudent, restoreStudentSession, type ChangeAccessCodeInput, type StudentLoginInput, type StudentSession } from '../lib/auth';
 import { API_URL } from '../config';
 import { pushScreenHistory, replaceScreenHistory } from '../lib/screenHistory';
+import type { ChallengeRecordPayload } from '../lib/challengeRanking';
 
 export type ScreenType = 'name' | 'home' | 'practice' | 'tapPractice' | 'loading' | 'result' | 'ranking' | 'profile' | 'challengeSetup' | 'challengeTap' | 'challengeSpeech' | 'challengeResult';
 
@@ -33,6 +34,7 @@ export interface TapEvaluationResult {
 }
 
 export type TapRecordStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type ChallengeRecordStatus = 'idle' | 'saving' | 'saved' | 'error';
 export type SessionStatus = 'restoring' | 'authenticated' | 'anonymous';
 
 interface AppState {
@@ -60,6 +62,8 @@ interface AppState {
   challengeQuestionCount: ChallengeQuestionCount;
   challengeQuestions: ChallengeQuestion[];
   challengeEvaluationResult: TapEvaluationResult | null;
+  challengeRecordStatus: ChallengeRecordStatus;
+  challengeRecordPayload: ChallengeRecordPayload | null;
   setScreen: (screen: ScreenType) => void;
   setUserName: (name: string) => void;
   login: (input: StudentLoginInput) => Promise<void>;
@@ -86,6 +90,8 @@ interface AppState {
   setChallengeQuestionCount: (count: ChallengeQuestionCount) => void;
   setChallengeQuestions: (questions: ChallengeQuestion[]) => void;
   setChallengeEvaluationResult: (result: TapEvaluationResult | null) => void;
+  setChallengeRecordStatus: (status: ChallengeRecordStatus) => void;
+  setChallengeRecordPayload: (record: ChallengeRecordPayload | null) => void;
   resetApp: () => void;
 }
 
@@ -114,6 +120,8 @@ export const useStore = create<AppState>((set) => ({
   challengeQuestionCount: 25,
   challengeQuestions: [],
   challengeEvaluationResult: null,
+  challengeRecordStatus: 'idle',
+  challengeRecordPayload: null,
   setScreen: (screen) => {
     pushScreenHistory(screen);
     set({ currentScreen: screen });
@@ -146,6 +154,8 @@ export const useStore = create<AppState>((set) => ({
         tapTable: 2, tapMode: 'sequential', selectedTable: 2, mode: 'sequential',
         expectedQuestions: [], tapQuestions: [], evaluationResult: null, tapEvaluationResult: null,
         tapRecordStatus: 'idle', totalTime: 0, timeLimitReached: false,
+        challengeMode: null, challengeQuestionCount: 25, challengeQuestions: [], challengeEvaluationResult: null,
+        challengeRecordStatus: 'idle', challengeRecordPayload: null,
       });
     }
   },
@@ -169,6 +179,8 @@ export const useStore = create<AppState>((set) => ({
   setChallengeQuestionCount: (challengeQuestionCount) => set({ challengeQuestionCount }),
   setChallengeQuestions: (challengeQuestions) => set({ challengeQuestions }),
   setChallengeEvaluationResult: (challengeEvaluationResult) => set({ challengeEvaluationResult }),
+  setChallengeRecordStatus: (challengeRecordStatus) => set({ challengeRecordStatus }),
+  setChallengeRecordPayload: (challengeRecordPayload) => set({ challengeRecordPayload }),
   resetApp: () => set((state) => ({
     currentScreen: state.userName ? 'home' : 'name',
     practiceType: 'speech',
@@ -190,5 +202,7 @@ export const useStore = create<AppState>((set) => ({
     challengeQuestionCount: 25,
     challengeQuestions: [],
     challengeEvaluationResult: null,
+    challengeRecordStatus: 'idle',
+    challengeRecordPayload: null,
   })),
 }));

@@ -18,6 +18,7 @@
 ```powershell
 psql $env:DATABASE_URL -f server/migrations/001_add_practice_types.sql
 psql $env:DATABASE_URL -f server/migrations/002_tenant_auth_foundation.sql
+psql $env:DATABASE_URL -f server/migrations/003_challenge_records.sql
 ```
 
 적용 뒤 `schools` 테이블에 각 학교의 UUID·호스트명·Workspace 도메인을 등록하고, `admins`에 Google `sub`와 이메일을 등록한다. 최초 관리자는 `SCHOOL_TENANTS.initialAdminSubjects`로 한 번만 부트스트랩할 수 있다.

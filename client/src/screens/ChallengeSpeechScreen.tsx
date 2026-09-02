@@ -16,7 +16,7 @@ function audioFilename(mimeType: string) {
 export default function ChallengeSpeechScreen() {
   const {
     challengeMode, challengeQuestionCount, challengeQuestions, setChallengeEvaluationResult,
-    setScreen, setTotalTime, setTimeLimitReached,
+    setScreen, setTotalTime, setTimeLimitReached, setChallengeRecordPayload, setChallengeRecordStatus,
   } = useStore();
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -52,13 +52,19 @@ export default function ChallengeSpeechScreen() {
         feedback: data.feedback || '결과를 확인해요.',
       });
       if (challengeQuestions.length === challengeQuestionCount) {
-        void saveChallengeRecord(API_URL, {
+        const record = {
           questionCount: challengeQuestionCount,
           challengeMode,
           totalCorrect: data.totalCorrect,
           totalTime,
           starCount: calculateChallengeStars(data.totalCorrect, challengeQuestions.length),
-        }).catch(() => undefined);
+        };
+        setChallengeRecordPayload(record);
+        setChallengeRecordStatus('saving');
+        void saveChallengeRecord(API_URL, record).then(
+          () => setChallengeRecordStatus('saved'),
+          () => setChallengeRecordStatus('error'),
+        );
       }
       setScreen('challengeResult');
     } catch {
